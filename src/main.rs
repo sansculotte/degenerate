@@ -38,11 +38,21 @@ fn main() {
     let mut z: f64 = 1.;
     let mut zs = vec![vec![0f64; imgy as usize]; imgx as usize];
 
+    // logistic map variables
+    let m: f64 = 0.2;
+    let mut n: f64;
+    let mut rf: f64;
+
     for i in 0..iterations {
+
 
         c = (i as f64 / iterations as f64) * PI * 2.0;
         c2 = c * E;
         c3 = c * PHI;
+
+        rf = c / 2. + 0.15;
+        n = rf * m * (1. - m);
+
         x = (cx + c.sin() * r + c.cos() * z * (imgy as f64)).round() as u32 % imgx;
         y = (cy + c.cos() * r + (c2 * z).sin() * (x as f64 * z * (imgx as f64) + E.powf(c2 / c3)).sqrt()).round() as u32 % imgy;
         z = (
@@ -51,7 +61,8 @@ fn main() {
                 *
                 ((((x as f64).sin() * PI * (y as f64 + z)).cos() + (c + z).powf(E) + PHI * c.cos() * (z + y as f64).powf(E) * (c3 * c2).ln() * c2.cos().powf(2.)).atan() / ATAN_SATURATION)
                 //c.cos() * c.tan() * c3.cos() * (x as f64 + z.powf(c)).sin()
-                * (c.powf(SQRT_2).cos() * c2.powf(3.).tan() * c3.powf(2.).cos() * (x as f64 + z.powf(c)).sin()).atan() / ATAN_SATURATION
+                //* (c.powf(SQRT_2).cos() * c2.powf(3.).tan() * c3.powf(2.).cos() * (x as f64 + z.powf(c)).sin()).atan() / ATAN_SATURATION
+                * n
         ).abs();
         r -= 235.0 / iterations as f64;
         zs[x as usize][y as usize] += z.powi(2);
