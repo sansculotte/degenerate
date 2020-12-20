@@ -61,7 +61,7 @@ fn main() {
     }
 
     if opt.blur > 0. {
-        image::imageops::blur(&imgbuf, opt.blur);
+        imgbuf = image::imageops::blur(&imgbuf, opt.blur);
     }
 
     let outfile = PathBuf::from(opt.outfile);
