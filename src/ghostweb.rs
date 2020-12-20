@@ -4,13 +4,17 @@ const PHI: f64 = 1.618033988749;
 const ATAN_SATURATION: f64 = 1.569796;
 
 
-pub fn ghostweb(width: u32, height: u32) -> std::vec::Vec<std::vec::Vec<f64>> {
-
-    let iterations: u32 = width*height * 64; // arbitrary
+pub fn ghostweb(
+    width: u32,
+    height: u32,
+    iterations: u32,
+    radius: f64,
+    m: f64
+) -> std::vec::Vec<std::vec::Vec<f64>> {
 
     let cx: f64 = width as f64 / 2.;
     let cy: f64 = height as f64 / 2.;
-    let mut r: f64 = 235.0;
+    let mut r: f64 = radius;
 
     let mut c: f64;
     let mut c2: f64;
@@ -21,7 +25,6 @@ pub fn ghostweb(width: u32, height: u32) -> std::vec::Vec<std::vec::Vec<f64>> {
     let mut zs = vec![vec![0f64; height as usize]; width as usize];
 
     // logistic map variables
-    let m: f64 = 0.2;
     let mut n: f64;
     let mut rf: f64;
 
