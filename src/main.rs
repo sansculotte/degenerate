@@ -1,11 +1,12 @@
-extern crate image;
+extern crate cairo;
 extern crate structopt;
 
 mod ghostweb;
 
 use ghostweb::ghostweb;
-use std::path::PathBuf;
+use std::fs::File;
 use structopt::StructOpt;
+use cairo::{ ImageSurface, Format, Context };
 
 
 #[derive(Debug, StructOpt)]
@@ -28,11 +29,7 @@ struct Opt {
     m: f64,
 
     #[structopt(short, long, default_value = "image.png")]
-    outfile: String,
-
-    #[structopt(short, long, default_value = "0.")]
-    blur: f32
-
+    outfile: String
 }
 
 fn main() {
@@ -46,24 +43,26 @@ fn main() {
               { opt.iterations }
         else  { opt.width * opt.height * 64 }; 
 
-    // Create a new ImgBuf with width: width and height: height
-    let mut imgbuf = image::ImageBuffer::new(width, height);
+    let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
+    let context = Context::new(&surface);
 
-    // Iterate over the coordinates and pixels of the image
-    // and set all to black
-    for (_, _, pixel) in imgbuf.enumerate_pixels_mut() {
-        *pixel = image::Luma([0]);
-    }
+    // black out
+    context.set_source_rgb(0.0, 0.0, 0.0);
+    context.paint();
 
     let zs = ghostweb(width, height, iterations, opt.radius, opt.m);
-    for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-        *pixel = image::Luma([(zs[x as usize][y as usize] * 255.) as u8]);
+
+    for y in 0..height {
+        for x in 0..width {
+            let z = zs[x as usize][y as usize];
+            context.set_source_rgba(1.0, 1.0, 1.0, z);
+            context.rectangle(x as f64, y as f64, 0.1, 0.1);
+            context.stroke();
+        }
     }
 
-    if opt.blur > 0. {
-        imgbuf = image::imageops::blur(&imgbuf, opt.blur);
-    }
-
-    let outfile = PathBuf::from(opt.outfile);
-    imgbuf.save(outfile).unwrap();
+    let mut outfile = File::create(opt.outfile)
+        .expect("Could not open output file");
+    surface.write_to_png(&mut outfile)
+        .expect("Could not write to output file");
 }
