@@ -3,7 +3,7 @@ use std::f64::consts::{E, PI, SQRT_2};
 const PHI: f64 = 1.618033988749;
 const ATAN_SATURATION: f64 = 1.569796;
 
-type Feed = (f64, f64, f64, f64, f64, f64);
+type Feed = (f64, f64, f64, f64, f64, f64, f64);
 
 
 pub fn ghostweb(
@@ -41,7 +41,7 @@ pub fn ghostweb(
         rf = c / 2. + 0.15;
         n = rf * m * (1. - m);
 
-        x1 = c.sin();
+        x1 = c.sin() * (c3 * r).cos();
         y1 = (c2 * c.powf(n)).cos();
         z1 = (
                 //(x as f64).sin() * (i as f64) + (y as f64).cos() * 2.3f64.powf(x as f64)
@@ -53,8 +53,8 @@ pub fn ghostweb(
             z1 = 1.0;
         }
 
-        x2 = (c2 * n).cos();
-        y2 = c3.sin();
+        x2 = c2.sin() * (c * r).cos();
+        y2 = (c3 * n.ln()).cos();
         z2 = (
                 (
                     c.cos() * c.tan() * c3.cos() * (x2 * c + z2.powf(c)).sin()
@@ -66,9 +66,9 @@ pub fn ghostweb(
             z2 = 1.0;
         }
 
-        r -= 325. / iterations as f64;
+        r -= radius / iterations as f64;
         xs.push(
-            (x1, y1, x2, y2, z1, z2)
+            (x1, y1, x2, y2, r, z1, z2)
         );
     }
     xs
