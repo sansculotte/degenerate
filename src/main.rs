@@ -13,6 +13,9 @@ use cairo::{ ImageSurface, Format, Context };
 #[structopt(name = "degenerate", about = "Generative Images from mathematic primitives ")]
 struct Opt {
 
+    #[structopt(short, long)]
+    debug: bool,
+
     #[structopt(short, long, default_value = "4000")]
     width: u32,
 
@@ -38,6 +41,8 @@ fn main() {
 
     let width = opt.width;
     let height = opt.height;
+    let cx: f64 = width as f64 / 2.;
+    let cy: f64 = height as f64 / 2.;
     let iterations =
         if opt.iterations > 0
               { opt.iterations }
@@ -50,15 +55,17 @@ fn main() {
     context.set_source_rgb(0.0, 0.0, 0.0);
     context.paint();
 
-    let zs = ghostweb(width, height, iterations, opt.radius, opt.m);
+    let xs = ghostweb(width, height, iterations, opt.radius, opt.m);
 
-    for y in 0..height {
-        for x in 0..width {
-            let z = zs[x as usize][y as usize];
-            context.set_source_rgba(1.0, 1.0, 1.0, z);
-            context.rectangle(x as f64, y as f64, 0.1, 0.1);
-            context.stroke();
+    for (x1, y1, x2, y2, length, strength) in xs {
+        if opt.debug {
+            println!("{} {} {} {} {} {}", x1, y1, x2, y2, length, strength);
         }
+        context.set_line_width(0.1);
+        context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+        context.move_to(cx + x1 * cx, cy + y1 * cy);
+        context.line_to(cx + x2 * cx, cy + y2 * cy);
+        context.stroke();
     }
 
     let mut outfile = File::create(opt.outfile)
