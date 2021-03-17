@@ -80,24 +80,27 @@ fn main() {
 
     let xs = ghostweb(width, height, iterations, opt.radius, opt.m);
 
-    for (x1, y1, x2, y2, radius, length, strength) in xs {
+    for x in xs {
         if opt.debug {
-            println!("{} {} {} {} {} {}", x1, y1, x2, y2, length, strength);
+            println!("{:?}", x);
         }
 
-        let crx1 = cx + x1 * radius;
-        let cry1 = cy + y1 * radius;
-        let crx2 = cx + x2 * radius;
-        let cry2 = cy + y2 * radius;
+        let crx1 = cx + x.x1 * x.radius;
+        let cry1 = cy + x.y1 * x.radius;
+        let crx2 = cx + x.x2 * x.radius;
+        let cry2 = cy + x.y2 * x.radius;
 
         context.set_line_width(0.1);
         context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
         context.move_to(crx1, cry1);
 
         match opt.method {
-            Method::Arc => context.arc(crx1, cry1, radius, length, strength),
-            Method::Curve => context.curve_to(crx1, cry1, cx + length * radius, cy + strength * radius, crx2, cry2),
-            Method::Dot => context.rectangle(crx1, crx2, 0.5, 0.5),
+            Method::Arc => context.arc(crx1, cry1, x.radius, x.z1, x.z2),
+            Method::Curve => context.curve_to(crx1, cry1, crx2, cry2, cx + x.z1 * x.radius, cy + x.z2 * x.radius),
+            Method::Dot => {
+                context.rectangle(crx1, cry1, 0.5, 0.5);
+                context.rectangle(crx2, cry2, 0.5, 0.5);
+            },
             Method::Line => context.line_to(crx2, cry2),
         }
 
