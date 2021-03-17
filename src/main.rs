@@ -78,7 +78,7 @@ fn main() {
     context.set_source_rgb(0.0, 0.0, 0.0);
     context.paint();
 
-    let xs = ghostweb(width, height, iterations, opt.radius, opt.m);
+    let xs = ghostweb(iterations, opt.radius, opt.m);
 
     for x in xs {
         if opt.debug {

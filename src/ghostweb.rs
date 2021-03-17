@@ -17,8 +17,6 @@ pub struct Feed {
 
 
 pub fn ghostweb(
-    width: u32,
-    height: u32,
     iterations: u32,
     radius: f64,
     m: f64
