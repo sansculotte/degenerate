@@ -98,7 +98,10 @@ fn main() {
             Method::Arc => context.arc(crx1, cry1, x.radius, x.z1, x.z2),
             Method::Curve => context.curve_to(crx1, cry1, crx2, cry2, cx + x.z1 * x.radius, cy + x.z2 * x.radius),
             Method::Dot => {
+                context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
                 context.rectangle(crx1, cry1, 0.5, 0.5);
+                context.stroke();
+                context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
                 context.rectangle(crx2, cry2, 0.5, 0.5);
             },
             Method::Line => context.line_to(crx2, cry2),
