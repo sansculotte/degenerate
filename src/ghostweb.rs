@@ -50,8 +50,10 @@ pub fn ghostweb(
 
         // these epicircles produce a very symmetric web
         // use n * or any other near chaotic function to break uo symmetry
-        x1 = c.sin() * (c3 * r).cos();
-        y1 = (c2 * c.powf(n)).cos();
+        x1 = (c * z1).sin() * (c3 * r).cos();
+        y1 = (c2 * z1).cos();
+        z1 = (x1 * 2. * PI).cos();
+        /*
         z1 = (
             //(x as f64).sin() * (i as f64) + (y as f64).cos() * 2.3f64.powf(x as f64)
             (((x1 * r).sin() * PI * y1 + z1).cos() + c.ln() + E * c.cos() * SQRT_2 * y1.cos() * c3.sqrt() * c2.cos())
@@ -61,6 +63,7 @@ pub fn ghostweb(
         if z1.is_nan() {
             z1 = 1.0;
         }
+        */
 
         x2 = c2.sin() * (c * r).cos();
         y2 = (c3 * n.ln()).cos();
