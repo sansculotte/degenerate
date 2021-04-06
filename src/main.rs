@@ -45,7 +45,7 @@ struct Opt {
     #[structopt(short, long, default_value = "0")]
     iterations: u32,
 
-    #[structopt(short, long, default_value = "235.0")]
+    #[structopt(short, long, default_value = "0")]
     radius: f64,
 
     #[structopt(short = "M", long, parse(try_from_str = parse_method), default_value = "dot")]
@@ -69,7 +69,11 @@ fn main() {
     let iterations =
         if opt.iterations > 0
               { opt.iterations }
-        else  { opt.width * opt.height * 64 };
+        else  { opt.width * opt.height };
+    let radius =
+        if opt.radius > 0.
+              { opt.radius }
+        else  { opt.width as f64 };
 
     let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
     let context = Context::new(&surface);
@@ -78,7 +82,7 @@ fn main() {
     context.set_source_rgb(0.0, 0.0, 0.0);
     context.paint();
 
-    let xs = ghostweb(iterations, opt.radius, opt.m);
+    let xs = ghostweb(iterations, radius, opt.m);
 
     for x in xs {
         if opt.debug {
