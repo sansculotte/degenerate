@@ -116,6 +116,7 @@ fn main() {
 
     let mut outfile = File::create(opt.outfile)
         .expect("Could not open output file");
+
     surface.write_to_png(&mut outfile)
         .expect("Could not write to output file");
 }

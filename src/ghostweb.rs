@@ -87,7 +87,7 @@ pub fn ghostweb(
         }
         */
 
-        r -= radius / iterations as f64;
+        r = radius * n;
         xs.push(
             Feed {
                 x1: x1,
