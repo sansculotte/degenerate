@@ -5,29 +5,40 @@ const PHI: f64 = 1.618033988749;
 const ATAN_SATURATION: f64 = 1.569796;
 
 
+#[derive(Debug)]
+pub struct Feed {
+    pub x1: f64,
+    pub y1: f64,
+    pub z1: f64,
+    pub x2: f64,
+    pub y2: f64,
+    pub z2: f64,
+    pub radius: f64,
+}
+
+
 pub fn ghostweb(
-    width: u32,
-    height: u32,
     iterations: u32,
     radius: f64,
     m: f64
-) -> std::vec::Vec<std::vec::Vec<f64>> {
+) -> Vec<Feed> {
 
-    let cx: f64 = width as f64 / 2.;
-    let cy: f64 = height as f64 / 2.;
     let mut r: f64 = radius;
 
     let mut c: f64;
     let mut c2: f64;
     let mut c3: f64;
-    let mut x: u32;
-    let mut y: u32;
-    let mut z: f64 = 1.;
-    let mut zs = vec![vec![0f64; height as usize]; width as usize];
+    let mut x1: f64;
+    let mut y1: f64;
+    let mut x2: f64;
+    let mut y2: f64;
+    let mut z1: f64 = 1.;
+    let mut z2: f64 = 1.;
 
     // logistic map variables
     let mut n: f64;
     let mut rf: f64;
+    let mut xs: Vec<Feed> = Vec::new();
 
     let osn = OpenSimplex::new();
     let hbm = HybridMulti::new();
@@ -41,23 +52,57 @@ pub fn ghostweb(
         rf = c / 2. + 0.15;
         n = rf * m * (1. - m);
 
-        x = (cx + c.sin() * r + c.cos() * z * (height as f64)).round() as u32 % width;
-        y = (cy + c.cos() * r + (c2 * z).sin() * (x as f64 * z * (width as f64) + E.powf(c2 / c3)).sqrt()).round() as u32 % height;
-
-        z = osn.get([x as f64, y as f64]) + hbm.get([x as f64, y as f64]) * n;
-
+        if z1 > 0. {
+            x1 = (c * z1).sin() * (c3 * r).cos();
+        }
+        else {
+            x1 = (c * z2).sinh() * (c3 * r.sqrt()).cos();
+        }
+        y1 = -(c2 * z1).cos() + z2;
+        z1 = osn.get([x as f64, y as f64]) + hbm.get([x as f64, y as f64]) * n;
         /*
-        z = (
-                //(x as f64).sin() * (i as f64) + (y as f64).cos() * 2.3f64.powf(x as f64)
-                ((((x as f64).sin() * PI * (y as f64 + z)).cos() + c.ln() + (E * c.cos()) * (SQRT_2 * (y as f64).cos()) * c3.sqrt() * c2.cos()).atan() / ATAN_SATURATION)
-                *
-                ((((x as f64).sin() * PI * (y as f64 + z)).cos() + (c + z).powf(E) + PHI * c.cos() * (z + y as f64).powf(E) * (c3 * c2).ln() * c2.cos().powf(2.)).atan() / ATAN_SATURATION)
-                //c.cos() * c.tan() * c3.cos() * (x as f64 + z.powf(c)).sin()
-                * (c.powf(SQRT_2).cos() * c2.powf(3.).tan() * c3.powf(2.).cos() * (x as f64 + z.powf(c)).sin()).atan() / ATAN_SATURATION
-        ).abs();
+        z1 = (
+            //(x as f64).sin() * (i as f64) + (y as f64).cos() * 2.3f64.powf(x as f64)
+            (((x1 * r).sin() * PI * y1 + z1).cos() + c.ln() + E * c.cos() * SQRT_2 * y1.cos() * c3.sqrt() * c2.cos())
+            *
+            ((((x1 * c).sin() * PI * y1 + z1)).cos() + (c * z1).powf(E) + PHI * z2.cos() * (z1 + y1 * c3).powf(E) * (c3 * c2).ln() * c2.cos().powf(n))
+        ).atan() / ATAN_SATURATION;
+        if z1.is_nan() {
+            z1 = 1.0;
+        }
         */
-        r -= 235.0 / iterations as f64;
-        zs[x as usize][y as usize] += z.powi(2);
+
+        if z2 > 0. {
+            x2 = c2.sin() * (c * r).cos();
+        }
+        else {
+            x2 = (c3 * (r * n).sqrt()).atan() * (c * n - c2).cos();
+        }
+        y2 = c3.cos() - z1;
+        z2 = ((x2 + y2) * 2. * PI).cos();
+        /*
+        z2 = (
+            c.cos() * c.tan() * c3.cos() * (x2 * c + z2.powf(c)).sin()
+            * n
+            * c.powf(SQRT_2).cos() * c2.powf(3.).tan() * c3.powf(2.).cos() * (x2 * r  + z2.powf(c)).sin()
+        ).atan() / ATAN_SATURATION;
+        if z2.is_nan() {
+            z2 = 1.0;
+        }
+        */
+
+        r = radius * n;
+        xs.push(
+            Feed {
+                x1: x1,
+                y1: y1,
+                z1: z1,
+                x2: x2,
+                y2: y2,
+                z2: z2,
+                radius: r
+            }
+        );
     }
-    zs
+    xs
 }
