@@ -45,6 +45,9 @@ struct Opt {
     #[structopt(short, long, default_value = "0")]
     iterations: u32,
 
+    #[structopt(short = "t", default_value = "0.0")]
+    t: f64,
+
     #[structopt(short, long, default_value = "0")]
     radius: f64,
 
@@ -82,7 +85,7 @@ fn main() {
     context.set_source_rgb(0.0, 0.0, 0.0);
     context.paint();
 
-    let xs = ghostweb(iterations, radius, opt.m);
+    let xs = ghostweb(iterations, radius, opt.m, opt.t);
 
     for x in xs {
         if opt.debug {
