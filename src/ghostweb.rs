@@ -20,7 +20,8 @@ pub struct Feed {
 pub fn ghostweb(
     iterations: u32,
     radius: f64,
-    m: f64
+    m: f64,
+    t: f64,
 ) -> Vec<Feed> {
 
     let mut r: f64 = radius;
@@ -52,14 +53,14 @@ pub fn ghostweb(
         rf = c / 2. + 0.15;
         n = rf * m * (1. - m);
 
-        if z1 > 0. {
+        if z1 - z2 > 0. {
             x1 = (c * z1).sin() * (c3 * r).cos();
         }
         else {
-            x1 = (c * z2).sinh() * (c3 * r.sqrt()).cos();
+            x1 = (c * z2).sinh() * (c2 * r.sqrt()).cos();
         }
         y1 = -(c2 * z1).cos() + z2;
-        z1 = osn.get([x as f64, y as f64]) + hbm.get([x as f64, y as f64]) * n;
+        z1 = osn.get([x1 as f64, y1 as f64, t]);
         /*
         z1 = (
             //(x as f64).sin() * (i as f64) + (y as f64).cos() * 2.3f64.powf(x as f64)
@@ -72,14 +73,14 @@ pub fn ghostweb(
         }
         */
 
-        if z2 > 0. {
-            x2 = c2.sin() * (c * r).cos();
+        if z2 - z1 > 0. {
+            x2 = c2.sin() * (c * r * z1).cos();
         }
         else {
-            x2 = (c3 * (r * n).sqrt()).atan() * (c * n - c2).cos();
+            x2 = (c3 * ((r * n).sin()).exp()) * (c * n - c2).cos();
         }
         y2 = c3.cos() - z1;
-        z2 = ((x2 + y2) * 2. * PI).cos();
+        z2 = hbm.get([x1 as f64, y1 as f64, t]);
         /*
         z2 = (
             c.cos() * c.tan() * c3.cos() * (x2 * c + z2.powf(c)).sin()
