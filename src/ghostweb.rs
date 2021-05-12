@@ -1,4 +1,4 @@
-use noise::{NoiseFn, OpenSimplex, HybridMulti};
+use noise::{NoiseFn, Billow, OpenSimplex, HybridMulti};
 use std::f64::consts::{E, PI, SQRT_2};
 
 const PHI: f64 = 1.618033988749;
@@ -43,6 +43,7 @@ pub fn ghostweb(
 
     let osn = OpenSimplex::new();
     let hbm = HybridMulti::new();
+    let billow = Billow::new();
 
     for i in 0..iterations {
 
@@ -59,8 +60,8 @@ pub fn ghostweb(
         else {
             x1 = (c * z2).sinh() * (c2 * r.sqrt()).cos();
         }
-        y1 = -(c2 * z1).cos() + z2;
-        z1 = osn.get([x1 as f64, y1 as f64, t]);
+        y1 = -c2.cos() + billow.get([x1, z1, t]);
+        z1 = osn.get([x1, y1, t]);
         /*
         z1 = (
             //(x as f64).sin() * (i as f64) + (y as f64).cos() * 2.3f64.powf(x as f64)
@@ -79,8 +80,8 @@ pub fn ghostweb(
         else {
             x2 = (c3 * ((r * n).sin()).exp()) * (c * n - c2).cos();
         }
-        y2 = c3.cos() - z1;
-        z2 = hbm.get([x1 as f64, y1 as f64, t]);
+        y2 = c3.cos() - billow.get([x2, z2, t]);
+        z2 = hbm.get([x1, y1, t]);
         /*
         z2 = (
             c.cos() * c.tan() * c3.cos() * (x2 * c + z2.powf(c)).sin()
