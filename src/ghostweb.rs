@@ -18,12 +18,12 @@ pub struct Feed {
 
 pub fn ghostweb(
     iterations: u32,
+    block: Vec<f64>,
     radius: f64,
     m: f64
 ) -> Vec<Feed> {
 
     let mut r: f64 = radius;
-
     let mut c: f64;
     let mut c2: f64;
     let mut c3: f64;
@@ -41,6 +41,9 @@ pub fn ghostweb(
 
     for i in 0..iterations {
 
+        let index =  i as usize % block.len();
+        let sample = block[index];
+
         c = (i as f64 / iterations as f64) * PI * 2.0;
         c2 = c * E;
         c3 = c * PHI;
@@ -48,44 +51,23 @@ pub fn ghostweb(
         rf = c / 2. + 0.15;
         n = rf * m * (1. - m);
 
-        if z1 > 0. {
+        if z2 > 0. {
             x1 = (c * z1).sin() * (c3 * r).cos();
         }
         else {
             x1 = (c * z2).sinh() * (c3 * r.sqrt()).cos();
         }
-        y1 = -(c2 * z1).cos() + z2;
-        z1 = (x1 * 2. * PI).cos();
-        /*
-        z1 = (
-            //(x as f64).sin() * (i as f64) + (y as f64).cos() * 2.3f64.powf(x as f64)
-            (((x1 * r).sin() * PI * y1 + z1).cos() + c.ln() + E * c.cos() * SQRT_2 * y1.cos() * c3.sqrt() * c2.cos())
-            *
-            ((((x1 * c).sin() * PI * y1 + z1)).cos() + (c * z1).powf(E) + PHI * z2.cos() * (z1 + y1 * c3).powf(E) * (c3 * c2).ln() * c2.cos().powf(n))
-        ).atan() / ATAN_SATURATION;
-        if z1.is_nan() {
-            z1 = 1.0;
-        }
-        */
+        y1 = -(c2 * z1).cos() + sample.powf(E);
+        z1 = (x1 * sample as f64).cos();
 
-        if z2 > 0. {
+        if z1 > 0. {
             x2 = c2.sin() * (c * r).cos();
         }
         else {
             x2 = (c3 * (r * n).sqrt()).atan() * (c * n - c2).cos();
         }
         y2 = c3.cos() - z1;
-        z2 = ((x2 + y2) * 2. * PI).cos();
-        /*
-        z2 = (
-            c.cos() * c.tan() * c3.cos() * (x2 * c + z2.powf(c)).sin()
-            * n
-            * c.powf(SQRT_2).cos() * c2.powf(3.).tan() * c3.powf(2.).cos() * (x2 * r  + z2.powf(c)).sin()
-        ).atan() / ATAN_SATURATION;
-        if z2.is_nan() {
-            z2 = 1.0;
-        }
-        */
+        z2 = ((x2 + y2) * sample as f64).cos();
 
         r = radius * n;
         xs.push(

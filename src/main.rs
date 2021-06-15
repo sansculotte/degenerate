@@ -1,12 +1,16 @@
 extern crate cairo;
+extern crate hound;
 extern crate structopt;
 
 mod ghostweb;
+mod lib;
 
 use std::fs::File;
+use std::path::Path;
 use structopt::StructOpt;
 use cairo::{ ImageSurface, Format, Context };
 use ghostweb::ghostweb;
+use lib::normalize;
 
 
 #[derive(Debug)]
@@ -45,6 +49,9 @@ struct Opt {
     #[structopt(short, long, default_value = "0")]
     iterations: u32,
 
+    #[structopt(short, long, default_value = "25")]
+    fps: usize,
+
     #[structopt(short, long, default_value = "0")]
     radius: f64,
 
@@ -54,8 +61,10 @@ struct Opt {
     #[structopt(short = "m", default_value = "0.2")]
     m: f64,
 
-    #[structopt(short, long, default_value = "image.png")]
-    outfile: String
+    #[structopt(short, long, default_value = "/tmp")]
+    outdir: String,
+
+    soundfile: String
 }
 
 fn main() {
@@ -64,28 +73,54 @@ fn main() {
 
     let width = opt.width;
     let height = opt.height;
-    let cx: f64 = width as f64 / 2.;
-    let cy: f64 = height as f64 / 2.;
     let iterations =
         if opt.iterations > 0
               { opt.iterations }
-        else  { opt.width * opt.height };
+         else { width * height };
     let radius =
         if opt.radius > 0.
               { opt.radius }
         else  { opt.width as f64 };
 
+    // load soundfile
+    let mut reader = hound::WavReader::open(opt.soundfile).unwrap();
+    let spec:hound::WavSpec = reader.spec();
+
     let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
     let context = Context::new(&surface);
 
-    // black out
-    context.set_source_rgb(0.0, 0.0, 0.0);
-    context.paint();
+    let blocksize: usize = spec.sample_rate as usize / opt.fps;
+    let method = opt.method;
 
-    let xs = ghostweb(iterations, radius, opt.m);
+    let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
+
+    for (i, block) in samples.chunks(blocksize).enumerate() {
+
+        // black out
+        context.set_source_rgb(0.0, 0.0, 0.0);
+        context.paint();
+
+        let xs = ghostweb(iterations, normalize(block), radius, opt.m);
+        draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
+
+        let path = Path::new(&opt.outdir).join(format!("{:01$}.png", i, 6));
+
+        let mut outfile = File::create(path)
+            .expect("Could not open output file");
+
+        surface.write_to_png(&mut outfile)
+            .expect("Could not write to output file");
+    }
+}
+
+
+fn draw(context: &Context, xs: &Vec<ghostweb::Feed>, width: u32, height: u32, debug: bool, method: &Method) {
+
+    let cx: f64 = width as f64 / 2.;
+    let cy: f64 = height as f64 / 2.;
 
     for x in xs {
-        if opt.debug {
+        if debug {
             println!("{:?}", x);
         }
 
@@ -98,7 +133,7 @@ fn main() {
         context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
         context.move_to(crx1, cry1);
 
-        match opt.method {
+        match method {
             Method::Arc => context.arc(crx1, cry1, x.radius, x.z1, x.z2),
             Method::Curve => context.curve_to(crx1, cry1, crx2, cry2, cx + x.z1 * x.radius, cy + x.z2 * x.radius),
             Method::Dot => {
@@ -113,10 +148,4 @@ fn main() {
 
         context.stroke();
     }
-
-    let mut outfile = File::create(opt.outfile)
-        .expect("Could not open output file");
-
-    surface.write_to_png(&mut outfile)
-        .expect("Could not write to output file");
 }

@@ -8,6 +8,24 @@ pub fn new_y_001(cs: f64, x: u32, y: u32, z:f64, c:f64) -> u32 {
 }
 */
 
+fn min_max(samples: &[i32]) -> (i32, i32) {
+    let min = *samples.iter().min().unwrap_or(&0);
+    let max = *samples.iter().max().unwrap_or(&0);
+    (min, max)
+}
+
+/*
+ * Normalize sample slice to f64 -1..1
+ */
+pub fn normalize(samples: &[i32]) -> Vec<f64> {
+    let (min, max) = min_max(&samples);
+    if max - min > 0 {
+        samples.iter().map(| s | *s as f64 / (max - min).abs() as f64).collect::<Vec<f64>>()
+    } else {
+        samples.iter().map(| s | *s as f64).collect::<Vec<f64>>()
+    }
+}
+
 fn spiral(n: i32) -> (i32, i32) {
     let k: i32 = (((n as f64).sqrt() - 1.) / 2.).ceil() as i32;
     let t0: i32 = 2 * k + 1;
