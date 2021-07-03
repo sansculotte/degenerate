@@ -52,6 +52,9 @@ struct Opt {
     #[structopt(short, long, default_value = "25")]
     fps: usize,
 
+    #[structopt(short = "t", default_value = "1.0")]
+    t: f64,
+
     #[structopt(short, long, default_value = "0")]
     radius: f64,
 
@@ -85,7 +88,9 @@ fn main() {
     // load soundfile
     let mut reader = hound::WavReader::open(opt.soundfile).unwrap();
     let spec:hound::WavSpec = reader.spec();
+    let duration = reader.duration();
 
+    // set up drawing canvas
     let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
     let context = Context::new(&surface);
 
@@ -100,7 +105,8 @@ fn main() {
         context.set_source_rgb(0.0, 0.0, 0.0);
         context.paint();
 
-        let xs = ghostweb(iterations, normalize(block), radius, opt.m);
+        let t = i as f64 / duration as f64 * opt.t;
+        let xs = ghostweb(iterations, normalize(block), radius, opt.m, t);
         draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
 
         let path = Path::new(&opt.outdir).join(format!("{:01$}.png", i, 6));

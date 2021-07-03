@@ -1,3 +1,4 @@
+use noise::{NoiseFn, Billow, OpenSimplex, HybridMulti};
 use std::f64::consts::{E, PI, SQRT_2};
 
 const PHI: f64 = 1.618033988749;
@@ -20,8 +21,11 @@ pub fn ghostweb(
     iterations: u32,
     block: Vec<f64>,
     radius: f64,
-    m: f64
+    m: f64,
+    t: f64,
 ) -> Vec<Feed> {
+
+    let rms = lib::rms(block);
 
     let mut r: f64 = radius;
     let mut c: f64;
@@ -39,9 +43,13 @@ pub fn ghostweb(
     let mut rf: f64;
     let mut xs: Vec<Feed> = Vec::new();
 
+    let osn = OpenSimplex::new();
+    let hbm = HybridMulti::new();
+    let billow = Billow::new();
+
     for i in 0..iterations {
 
-        let index =  i as usize % block.len();
+        let index = i as usize % block.len();
         let sample = block[index];
 
         c = (i as f64 / iterations as f64) * PI * 2.0;
@@ -51,25 +59,15 @@ pub fn ghostweb(
         rf = c / 2. + 0.15;
         n = rf * m * (1. - m);
 
-        if z2 > 0. {
-            x1 = (c * z1).sin() * (c3 * r).cos();
-        }
-        else {
-            x1 = (c * z2).sinh() * (c3 * r.sqrt()).cos();
-        }
-        y1 = -(c2 * z1).cos() + sample.powf(E);
-        z1 = (x1 * sample as f64).cos();
+        x1 = (c * z2).sinh() * (c2 * c3.powf(t)).cos();
+        y1 = -c2.cos() + (t.powf(sample as f64)).sin();
+        z1 = sample * osn.get([x1, y1, t]);
 
-        if z1 > 0. {
-            x2 = c2.sin() * (c * r).cos();
-        }
-        else {
-            x2 = (c3 * (r * n).sqrt()).atan() * (c * n - c2).cos();
-        }
-        y2 = c3.cos() - z1;
-        z2 = ((x2 + y2) * sample as f64).cos();
+        x2 = (c3 * (r * n)).sin() + (c * t - c2).cos();
+        y2 = c3.cos() - ((sample as f64).powf(E)).sin();
+        z2 = hbm.get([x1, y1, sample as f64]);
 
-        r = radius * n;
+        r = radius * rms;
         xs.push(
             Feed {
                 x1: x1,
