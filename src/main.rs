@@ -7,11 +7,10 @@ mod lib;
 
 use std::fs::File;
 use std::path::Path;
-use structopt::StructOpt;
 use cairo::{ ImageSurface, Format, Context };
+use pbr::ProgressBar;
+use structopt::StructOpt;
 use ghostweb::ghostweb;
-use lib::normalize;
-
 
 #[derive(Debug)]
 enum Method {
@@ -99,6 +98,9 @@ fn main() {
 
     let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
 
+    let frames = samples.len() / blocksize;
+    let mut pb = ProgressBar::new(frames as u64);
+
     for (i, block) in samples.chunks(blocksize).enumerate() {
 
         // black out
@@ -106,7 +108,7 @@ fn main() {
         context.paint();
 
         let t = i as f64 / duration as f64 * opt.t;
-        let xs = ghostweb(iterations, normalize(block), radius, opt.m, t);
+        let xs = ghostweb(iterations, block, radius, opt.m, t);
         draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
 
         let path = Path::new(&opt.outdir).join(format!("{:01$}.png", i, 6));
@@ -116,7 +118,10 @@ fn main() {
 
         surface.write_to_png(&mut outfile)
             .expect("Could not write to output file");
+
+        pb.inc();
     }
+    pb.finish_print("done!");
 }
 
 
