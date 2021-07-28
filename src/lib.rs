@@ -26,6 +26,13 @@ pub fn normalize(samples: &[i32]) -> Vec<f64> {
     }
 }
 
+pub fn rms(samples: &[i32]) -> f64 {
+    // i16 beccause the soundfile is i16. needs to be passed from soundfile info!
+    let squared = samples.iter().map(|s| *s as f64 / i16::MAX as f64).fold(0.0, |a, s| a + s * s);
+    let mean = squared / samples.len() as f64;
+    mean.sqrt()
+}
+
 fn spiral(n: i32) -> (i32, i32) {
     let k: i32 = (((n as f64).sqrt() - 1.) / 2.).ceil() as i32;
     let t0: i32 = 2 * k + 1;
