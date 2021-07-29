@@ -1,5 +1,6 @@
 use noise::{NoiseFn, Billow, OpenSimplex, HybridMulti};
 use std::f64::consts::{E, PI, SQRT_2};
+use crate::lib::{normalize, rms};
 
 const PHI: f64 = 1.618033988749;
 const ATAN_SATURATION: f64 = 1.569796;
@@ -19,13 +20,14 @@ pub struct Feed {
 
 pub fn ghostweb(
     iterations: u32,
-    block: Vec<f64>,
+    block: &[i32],
     radius: f64,
     m: f64,
     t: f64,
 ) -> Vec<Feed> {
 
-    let rms = lib::rms(block);
+    let rms = rms(block);
+    let samples = normalize(block);
 
     let mut r: f64 = radius;
     let mut c: f64;
@@ -50,7 +52,7 @@ pub fn ghostweb(
     for i in 0..iterations {
 
         let index = i as usize % block.len();
-        let sample = block[index];
+        let sample = samples[index];
 
         c = (i as f64 / iterations as f64) * PI * 2.0;
         c2 = c * E;
@@ -59,15 +61,19 @@ pub fn ghostweb(
         rf = c / 2. + 0.15;
         n = rf * m * (1. - m);
 
-        x1 = (c * z2).sinh() * (c2 * c3.powf(t)).cos();
-        y1 = -c2.cos() + (t.powf(sample as f64)).sin();
+        x1 = (t + c * z2).sin() * (c2 * t.powf(c3)).cos();
+        y1 = (t * 4000. + c).sin() * (rms - t.powf(sample as f64)).sin();
         z1 = sample * osn.get([x1, y1, t]);
 
-        x2 = (c3 * (r * n)).sin() + (c * t - c2).cos();
-        y2 = c3.cos() - ((sample as f64).powf(E)).sin();
-        z2 = hbm.get([x1, y1, sample as f64]);
+        x2 = ((c2 + t) + z1 + n).sin();
+        y2 = (c3 + t).cos() * billow.get([x1, x2, t * 2000.]);
+        z2 = (sample * rms + t) * c;
 
-        r = radius * rms;
+//        x2 = (c3 * r * n).sin() + (c * t - c2).cos();
+//        y2 = c3.cos() * (n * t + rms).cos() + (t + (sample as f64).powf(E)).sin();
+//        z2 = hbm.get([x1, y1, sample as f64]) + billow.get([x2, y2, z1]) * sample;
+
+        r = radius * (n + rms);
         xs.push(
             Feed {
                 x1: x1,
