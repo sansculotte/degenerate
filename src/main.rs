@@ -12,6 +12,8 @@ use pbr::ProgressBar;
 use structopt::StructOpt;
 use ghostweb::ghostweb;
 
+const VERSION: &str = "0.0.1";
+
 #[derive(Debug)]
 enum Method {
     Arc,
@@ -33,7 +35,11 @@ fn parse_method(method: &str) -> Result<Method, String> {
 
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "degenerate", about = "Generative Images from mathematic primitives")]
+#[structopt(
+    name = "degenerate",
+    about = "Generative Images from mathematic primitives",
+    version = VERSION
+)]
 struct Opt {
 
     #[structopt(short, long)]
