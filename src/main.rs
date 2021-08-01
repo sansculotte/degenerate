@@ -72,6 +72,7 @@ struct Opt {
     #[structopt(short, long, default_value = "/tmp")]
     outdir: String,
 
+    #[structopt(default_value = "")]
     soundfile: String
 }
 
@@ -79,16 +80,30 @@ fn main() {
 
     let opt = Opt::from_args();
 
-    let width = opt.width;
-    let height = opt.height;
     let iterations =
         if opt.iterations > 0
               { opt.iterations }
-         else { width * height };
+         else { opt.width * opt.height };
     let radius =
         if opt.radius > 0.
               { opt.radius }
         else  { opt.width as f64 };
+
+    if opt.soundfile == "" {
+        single_frame(iterations, radius, opt)
+    }
+    else {
+        multi_frame(iterations, radius, opt)
+    }
+
+}
+
+
+fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
+
+    let width = opt.width;
+    let height = opt.height;
+    let method = opt.method;
 
     // load soundfile
     let mut reader = hound::WavReader::open(opt.soundfile).unwrap();
@@ -100,7 +115,6 @@ fn main() {
     let context = Context::new(&surface);
 
     let blocksize: usize = spec.sample_rate as usize / opt.fps;
-    let method = opt.method;
 
     let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
 
@@ -108,10 +122,6 @@ fn main() {
     let mut pb = ProgressBar::new(frames as u64);
 
     for (i, block) in samples.chunks(blocksize).enumerate() {
-
-        // black out
-        context.set_source_rgb(0.0, 0.0, 0.0);
-        context.paint();
 
         let t = i as f64 / duration as f64 * opt.t;
         let xs = ghostweb(iterations, block, radius, opt.m, t);
@@ -131,20 +141,48 @@ fn main() {
 }
 
 
+fn single_frame(iterations: u32, radius: f64, opt: Opt) {
+
+    let width = opt.width;
+    let height = opt.height;
+    let method = opt.method;
+
+    // set up drawing canvas
+    let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
+    let context = Context::new(&surface);
+
+    let t = 0.;
+
+    let xs = ghostweb(iterations, &[], radius, opt.m, t);
+    draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
+
+    let path = Path::new(&opt.outdir).join(format!("image.png"));
+
+    let mut outfile = File::create(path)
+        .expect("Could not open output file");
+
+    surface.write_to_png(&mut outfile)
+        .expect("Could not write to output file");
+}
+
 fn draw(context: &Context, xs: &Vec<ghostweb::Feed>, width: u32, height: u32, debug: bool, method: &Method) {
 
-    let cx: f64 = width as f64 / 2.;
-    let cy: f64 = height as f64 / 2.;
+let cx: f64 = width as f64 / 2.;
+let cy: f64 = height as f64 / 2.;
 
-    for x in xs {
-        if debug {
-            println!("{:?}", x);
-        }
+// black out
+context.set_source_rgb(0.0, 0.0, 0.0);
+context.paint();
 
-        let crx1 = cx + x.x1 * x.radius;
-        let cry1 = cy + x.y1 * x.radius;
-        let crx2 = cx + x.x2 * x.radius;
-        let cry2 = cy + x.y2 * x.radius;
+for x in xs {
+    if debug {
+        println!("{:?}", x);
+    }
+
+    let crx1 = cx + x.x1 * x.radius;
+    let cry1 = cy + x.y1 * x.radius;
+    let crx2 = cx + x.x2 * x.radius;
+    let cry2 = cy + x.y2 * x.radius;
 
         context.set_line_width(0.1);
         context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
@@ -162,7 +200,6 @@ fn draw(context: &Context, xs: &Vec<ghostweb::Feed>, width: u32, height: u32, de
             },
             Method::Line => context.line_to(crx2, cry2),
         }
-
         context.stroke();
     }
 }

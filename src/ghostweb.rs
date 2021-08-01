@@ -29,7 +29,6 @@ pub fn ghostweb(
     let rms = rms(block);
     let samples = normalize(block);
 
-    let mut r: f64 = radius;
     let mut c: f64;
     let mut c2: f64;
     let mut c3: f64;
@@ -51,8 +50,14 @@ pub fn ghostweb(
 
     for i in 0..iterations {
 
-        let index = i as usize % block.len();
-        let sample = samples[index];
+        let sample: f64;
+        if block.len() > 0 {
+            let index = i as usize % block.len();
+            sample = samples[index];
+        }
+        else {
+            sample = 0.;
+        }
 
         c = (i as f64 / iterations as f64) * PI * 2.0;
         c2 = c * E;
@@ -73,7 +78,7 @@ pub fn ghostweb(
 //        y2 = c3.cos() * (n * t + rms).cos() + (t + (sample as f64).powf(E)).sin();
 //        z2 = hbm.get([x1, y1, sample as f64]) + billow.get([x2, y2, z1]) * sample;
 
-        r = radius * (n + rms);
+        let r = radius * (n + rms);
         xs.push(
             Feed {
                 x1: x1,
