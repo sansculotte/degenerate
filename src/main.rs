@@ -109,16 +109,14 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
     let mut reader = hound::WavReader::open(opt.soundfile).unwrap();
     let spec:hound::WavSpec = reader.spec();
     let duration = reader.duration();
+    let blocksize: usize = (spec.sample_rate as usize / opt.fps) * spec.channels as usize;
+    let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
+    let frames = samples.len() / blocksize;
 
     // set up drawing canvas
     let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
     let context = Context::new(&surface);
 
-    let blocksize: usize = spec.sample_rate as usize / opt.fps;
-
-    let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
-
-    let frames = samples.len() / blocksize;
     let mut pb = ProgressBar::new(frames as u64);
 
     for (i, block) in samples.chunks(blocksize).enumerate() {
