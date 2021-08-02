@@ -34,9 +34,9 @@ pub fn ghostweb(
     let mut c3: f64;
     let mut x1: f64;
     let mut y1: f64;
-    let mut x2: f64;
-    let mut y2: f64;
     let mut z1: f64 = 1.;
+    let mut x2: f64 = 0.;
+    let mut y2: f64 = 0.;
     let mut z2: f64 = 1.;
 
     // logistic map variables
@@ -66,7 +66,7 @@ pub fn ghostweb(
         rf = c / 2. + 0.15;
         n = rf * m * (1. - m);
 
-        x1 = (t + c * z2).sin() * (c2 * t.powf(c3)).cos();
+        x1 = (t + c * z2).sin() * (c2 * t.powf(c3)).cos() * hbm.get([x2, y2, z2]);
         y1 = (t * 4000. + c).sin() * (rms - t.powf(sample as f64)).sin();
         z1 = sample * osn.get([x1, y1, t]);
 
