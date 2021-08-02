@@ -76,6 +76,7 @@ struct Opt {
     soundfile: String
 }
 
+
 fn main() {
 
     let opt = Opt::from_args();
@@ -95,7 +96,6 @@ fn main() {
     else {
         multi_frame(iterations, radius, opt)
     }
-
 }
 
 
@@ -163,24 +163,25 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
         .expect("Could not write to output file");
 }
 
+
 fn draw(context: &Context, xs: &Vec<ghostweb::Feed>, width: u32, height: u32, debug: bool, method: &Method) {
 
-let cx: f64 = width as f64 / 2.;
-let cy: f64 = height as f64 / 2.;
+    let cx: f64 = width as f64 / 2.;
+    let cy: f64 = height as f64 / 2.;
 
-// black out
-context.set_source_rgb(0.0, 0.0, 0.0);
-context.paint();
+    // black out
+    context.set_source_rgb(0.0, 0.0, 0.0);
+    context.paint();
 
-for x in xs {
-    if debug {
-        println!("{:?}", x);
-    }
+    for x in xs {
+        if debug {
+            println!("{:?}", x);
+        }
 
-    let crx1 = cx + x.x1 * x.radius;
-    let cry1 = cy + x.y1 * x.radius;
-    let crx2 = cx + x.x2 * x.radius;
-    let cry2 = cy + x.y2 * x.radius;
+        let crx1 = cx + x.x1 * x.radius;
+        let cry1 = cy + x.y1 * x.radius;
+        let crx2 = cx + x.x2 * x.radius;
+        let cry2 = cy + x.y2 * x.radius;
 
         context.set_line_width(0.1);
         context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
