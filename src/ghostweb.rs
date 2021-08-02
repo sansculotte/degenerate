@@ -1,4 +1,6 @@
+use noise::{NoiseFn, Billow, OpenSimplex, HybridMulti};
 use std::f64::consts::{E, PI, SQRT_2};
+use crate::lib::{normalize, rms};
 
 const PHI: f64 = 1.618033988749;
 const ATAN_SATURATION: f64 = 1.569796;
@@ -18,20 +20,23 @@ pub struct Feed {
 
 pub fn ghostweb(
     iterations: u32,
+    block: &[i32],
     radius: f64,
-    m: f64
+    m: f64,
+    t: f64,
 ) -> Vec<Feed> {
 
-    let mut r: f64 = radius;
+    let rms = rms(block);
+    let samples = normalize(block);
 
     let mut c: f64;
     let mut c2: f64;
     let mut c3: f64;
     let mut x1: f64;
     let mut y1: f64;
-    let mut x2: f64;
-    let mut y2: f64;
     let mut z1: f64 = 1.;
+    let mut x2: f64 = 0.;
+    let mut y2: f64 = 0.;
     let mut z2: f64 = 1.;
 
     // logistic map variables
@@ -39,7 +44,20 @@ pub fn ghostweb(
     let mut rf: f64;
     let mut xs: Vec<Feed> = Vec::new();
 
+    let osn = OpenSimplex::new();
+    let hbm = HybridMulti::new();
+    let billow = Billow::new();
+
     for i in 0..iterations {
+
+        let sample: f64;
+        if block.len() > 0 {
+            let index = i as usize % block.len();
+            sample = samples[index];
+        }
+        else {
+            sample = 0.;
+        }
 
         c = (i as f64 / iterations as f64) * PI * 2.0;
         c2 = c * E;
@@ -48,46 +66,19 @@ pub fn ghostweb(
         rf = c / 2. + 0.15;
         n = rf * m * (1. - m);
 
-        if z1 > 0. {
-            x1 = (c * z1).sin() * (c3 * r).cos();
-        }
-        else {
-            x1 = (c * z2).sinh() * (c3 * r.sqrt()).cos();
-        }
-        y1 = -(c2 * z1).cos() + z2;
-        z1 = (x1 * 2. * PI).cos();
-        /*
-        z1 = (
-            //(x as f64).sin() * (i as f64) + (y as f64).cos() * 2.3f64.powf(x as f64)
-            (((x1 * r).sin() * PI * y1 + z1).cos() + c.ln() + E * c.cos() * SQRT_2 * y1.cos() * c3.sqrt() * c2.cos())
-            *
-            ((((x1 * c).sin() * PI * y1 + z1)).cos() + (c * z1).powf(E) + PHI * z2.cos() * (z1 + y1 * c3).powf(E) * (c3 * c2).ln() * c2.cos().powf(n))
-        ).atan() / ATAN_SATURATION;
-        if z1.is_nan() {
-            z1 = 1.0;
-        }
-        */
+        x1 = (t + c * z2).sin() * (c2 * t.powf(c3)).cos() * hbm.get([x2, y2, z2]);
+        y1 = (t * 4000. + c).sin() * (rms - t.powf(sample as f64)).sin();
+        z1 = sample * osn.get([x1, y1, t]);
 
-        if z2 > 0. {
-            x2 = c2.sin() * (c * r).cos();
-        }
-        else {
-            x2 = (c3 * (r * n).sqrt()).atan() * (c * n - c2).cos();
-        }
-        y2 = c3.cos() - z1;
-        z2 = ((x2 + y2) * 2. * PI).cos();
-        /*
-        z2 = (
-            c.cos() * c.tan() * c3.cos() * (x2 * c + z2.powf(c)).sin()
-            * n
-            * c.powf(SQRT_2).cos() * c2.powf(3.).tan() * c3.powf(2.).cos() * (x2 * r  + z2.powf(c)).sin()
-        ).atan() / ATAN_SATURATION;
-        if z2.is_nan() {
-            z2 = 1.0;
-        }
-        */
+        x2 = ((c2 + t) + z1 + n).sin();
+        y2 = (c3 + t).cos() * billow.get([x1, x2, t * 2000.]);
+        z2 = (sample * rms + t) * c;
 
-        r = radius * n;
+//        x2 = (c3 * r * n).sin() + (c * t - c2).cos();
+//        y2 = c3.cos() * (n * t + rms).cos() + (t + (sample as f64).powf(E)).sin();
+//        z2 = hbm.get([x1, y1, sample as f64]) + billow.get([x2, y2, z1]) * sample;
+
+        let r = radius * (n + rms);
         xs.push(
             Feed {
                 x1: x1,
