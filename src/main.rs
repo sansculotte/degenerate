@@ -151,7 +151,7 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
 
     let t = 0.;
 
-    let xs = ghostweb(iterations, &[], radius, opt.m, t);
+    let xs = ghostweb(iterations, &[127], radius, opt.m, t);
     draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
 
     let path = Path::new(&opt.outdir).join(format!("image.png"));
