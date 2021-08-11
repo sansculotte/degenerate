@@ -149,9 +149,7 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
     let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
     let context = Context::new(&surface);
 
-    let t = 0.;
-
-    let xs = ghostweb(iterations, &[0], radius, opt.m, t);
+    let xs = ghostweb(iterations, &[0], radius, opt.m, opt.t);
     draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
 
     let path = Path::new(&opt.outdir).join(format!("image.png"));
