@@ -1,10 +1,9 @@
-use noise::{NoiseFn, Billow, OpenSimplex, HybridMulti};
-use std::f64::consts::{E, PI, SQRT_2};
 use crate::lib::{normalize, rms};
+use noise::{Billow, HybridMulti, NoiseFn, OpenSimplex};
+use std::f64::consts::{E, PI, SQRT_2};
 
 const PHI: f64 = 1.618033988749;
 const ATAN_SATURATION: f64 = 1.569796;
-
 
 #[derive(Debug)]
 pub struct Feed {
@@ -17,7 +16,6 @@ pub struct Feed {
     pub radius: f64,
 }
 
-
 #[derive(Debug)]
 struct Point {
     pub x: f64,
@@ -25,10 +23,8 @@ struct Point {
     pub z: f64,
 }
 
-
 #[derive(Debug)]
 struct State {
-
     // current iteraton
     pub i: u32,
 
@@ -53,25 +49,16 @@ struct State {
     pub billow: Billow,
 }
 
-
 struct Parameter<'a> {
     iterations: u32,
-    block: &'a[i32],
+    block: &'a [i32],
     radius: f64,
     m: f64,
     t: f64,
     rms: f64,
 }
 
-
-pub fn ghostweb(
-    iterations: u32,
-    block: &[i32],
-    radius: f64,
-    m: f64,
-    t: f64,
-) -> Vec<Feed> {
-
+pub fn ghostweb(iterations: u32, block: &[i32], radius: f64, m: f64, t: f64) -> Vec<Feed> {
     let samples = normalize(block);
 
     // collected points
@@ -91,8 +78,16 @@ pub fn ghostweb(
         c: 0.,
         c2: 0.,
         c3: 0.,
-        p1: Point { x: 0., y: 0., z: 0. },
-        p2: Point { x: 0., y: 0., z: 0. },
+        p1: Point {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        },
+        p2: Point {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        },
         n: 0.,
         rf: 0.,
         osx: OpenSimplex::new(),
@@ -102,36 +97,32 @@ pub fn ghostweb(
     };
 
     for i in 0..iterations {
-
         if block.len() > 0 {
             let index = i as usize % block.len();
             state.sample = samples[index];
-        }
-        else {
+        } else {
             state.sample = 0.;
         }
 
         state = advance(state, &params);
 
+        state.i = i;
         state.r = radius; // * state.n; //(state.n + params.rms);
         state.p1 = flavour_001(&state, &params);
         state.p2 = flavour_002(&state, &params);
 
-        xs.push(
-            Feed {
-                x1: state.p1.x,
-                y1: state.p1.y,
-                z1: state.p1.z,
-                x2: state.p2.x,
-                y2: state.p2.y,
-                z2: state.p2.z,
-                radius: state.r
-            }
-        );
+        xs.push(Feed {
+            x1: state.p1.x,
+            y1: state.p1.y,
+            z1: state.p1.z,
+            x2: state.p2.x,
+            y2: state.p2.y,
+            z2: state.p2.z,
+            radius: state.r,
+        });
     }
     xs
 }
-
 
 fn advance(mut state: State, p: &Parameter) -> State {
     state.c = (state.i as f64 / p.iterations as f64) * PI * 2.0;
@@ -143,38 +134,40 @@ fn advance(mut state: State, p: &Parameter) -> State {
     state
 }
 
-
 fn flavour_001(s: &State, p: &Parameter) -> Point {
-    let x: f64 = s.c.sin();
-    let y: f64 = s.c2.cos();
-    let z: f64 = (x + y).tanh();
-    Point {x: x, y: y, z: z}
+    let x: f64 = s.c.sin() + s.p1.z;
+    let y: f64 = s.c2.cos() * s.n;
+    let z: f64 = (x + y).tanh() * s.p2.z;
+    Point { x: x, y: y, z: z }
 }
 
 fn flavour_002(s: &State, p: &Parameter) -> Point {
     let x: f64 = (s.c + s.p1.z).cos();
     let y: f64 = s.c2.sin();
     let z: f64 = ((x + y) * PI).cos();
-    Point {x: x, y: y, z: z}
+    Point { x: x, y: y, z: z }
 }
 
 fn flavour_003(s: &State, p: &Parameter) -> Point {
-    let x: f64 = (p.t + s.c * s.p2.z).sin() * (s.c2 * p.t.powf(s.c3)).cos() * s.hbm.get([s.p2.x, s.p2.y, s.p2.z]);
+    let x: f64 = (p.t + s.c * s.p2.z).sin()
+        * (s.c2 * p.t.powf(s.c3)).cos()
+        * s.hbm.get([s.p2.x, s.p2.y, s.p2.z]);
     let y: f64 = (p.t * 4000. + s.c).sin() * (p.rms - p.t.powf(s.sample as f64)).sin();
     let z: f64 = s.sample * s.osx.get([s.p1.x, s.p1.y, p.t]);
-    Point {x: x, y: y, z: z}
+    Point { x: x, y: y, z: z }
 }
 
 fn flavour_004(s: &State, p: &Parameter) -> Point {
     let x = ((s.c2 + p.t) + s.p1.z + s.n).sin();
     let y = (s.c3 + p.t).cos() * s.billow.get([s.p1.x, s.p1.x, p.t * 2000.]);
     let z = (s.sample * p.rms + p.t) * s.c;
-    Point {x: x, y: y, z: z}
+    Point { x: x, y: y, z: z }
 }
 
 fn flavour_005(s: &State, p: &Parameter) -> Point {
     let x = (s.c3 * s.r * s.n).sin() + (s.c * p.t - s.c2).cos();
     let y = s.c3.cos() * (s.n * p.t + p.rms).cos() + (p.t + (s.sample as f64).powf(E)).sin();
-    let z = s.hbm.get([s.p1.x, s.p1.y, s.sample as f64]) + s.billow.get([s.p2.x, s.p2.y, s.p2.z]) * s.sample;
-    Point {x: x, y: y, z: z}
+    let z = s.hbm.get([s.p1.x, s.p1.y, s.sample as f64])
+        + s.billow.get([s.p2.x, s.p2.y, s.p2.z]) * s.sample;
+    Point { x: x, y: y, z: z }
 }
