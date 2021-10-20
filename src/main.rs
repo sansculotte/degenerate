@@ -85,7 +85,7 @@ fn main() {
     let radius = if opt.radius > 0. {
         opt.radius
     } else {
-        opt.width as f64
+        (opt.width / 2) as f64
     };
 
     if opt.soundfile == "" {
