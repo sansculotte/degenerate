@@ -108,8 +108,8 @@ pub fn ghostweb(iterations: u32, block: &[i32], radius: f64, m: f64, t: f64) -> 
 
         state.i = i;
         state.r = radius; // * state.n; //(state.n + params.rms);
-        state.p1 = flavour_001(&state, &params);
-        state.p2 = flavour_002(&state, &params);
+        state.p1 = flavour_000(&state, &params);
+        state.p2 = flavour_001(&state, &params);
 
         xs.push(Feed {
             x1: state.p1.x,
@@ -134,10 +134,17 @@ fn advance(mut state: State, p: &Parameter) -> State {
     state
 }
 
+fn flavour_000(s: &State, p: &Parameter) -> Point {
+    let x: f64 = s.c.sin();
+    let y: f64 = s.c.cos();
+    let z: f64 = s.p1.z;
+    Point { x: x, y: y, z: z }
+}
+
 fn flavour_001(s: &State, p: &Parameter) -> Point {
-    let x: f64 = s.c.sin() + s.p1.z;
-    let y: f64 = s.c2.cos() * s.n;
-    let z: f64 = (x + y).tanh() * s.p2.z;
+    let x: f64 = s.c.sin();
+    let y: f64 = (x.powf(3.) + 0.5 * x + 0.3333).sqrt();
+    let z: f64 = s.p1.z;
     Point { x: x, y: y, z: z }
 }
 
