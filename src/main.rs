@@ -12,7 +12,7 @@ use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
 
-const VERSION: &str = "0.0.1";
+const VERSION: &str = "0.0.2";
 
 #[derive(Debug)]
 enum Method {
@@ -52,8 +52,14 @@ struct Opt {
     #[structopt(short, long, default_value = "0")]
     iterations: u32,
 
-    #[structopt(short, long, default_value = "25")]
+    #[structopt(long, default_value = "25")]
     fps: usize,
+
+    #[structopt(long, default_value = "0")]
+    f1: usize,
+
+    #[structopt(long, default_value = "1")]
+    f2: usize,
 
     #[structopt(short = "t", default_value = "1.0")]
     t: f64,
@@ -116,7 +122,7 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
 
     for (i, block) in samples.chunks(blocksize).enumerate() {
         let t = i as f64 / duration as f64 * opt.t;
-        let xs = ghostweb(iterations, block, radius, opt.m, t);
+        let xs = ghostweb(iterations, block, radius, opt.f1, opt.f2, opt.m, t);
         draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
 
         let path = Path::new(&opt.outdir).join(format!("{:01$}.png", i, 6));
@@ -141,7 +147,7 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
     let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
     let context = Context::new(&surface);
 
-    let xs = ghostweb(iterations, &[0], radius, opt.m, opt.t);
+    let xs = ghostweb(iterations, &[0], radius, opt.f1, opt.f2, opt.m, opt.t);
     draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
 
     let path = Path::new(&opt.outdir).join(format!("image.png"));

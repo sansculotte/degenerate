@@ -58,7 +58,15 @@ struct Parameter<'a> {
     rms: f64,
 }
 
-pub fn ghostweb(iterations: u32, block: &[i32], radius: f64, m: f64, t: f64) -> Vec<Feed> {
+pub fn ghostweb(
+    iterations: u32,
+    block: &[i32],
+    radius: f64,
+    f1: usize,
+    f2: usize,
+    m: f64,
+    t: f64
+) -> Vec<Feed> {
     let samples = normalize(block);
 
     // collected points
@@ -96,6 +104,9 @@ pub fn ghostweb(iterations: u32, block: &[i32], radius: f64, m: f64, t: f64) -> 
         r: radius,
     };
 
+    let equation_1 = select_equation(f1);
+    let equation_2 = select_equation(f2);
+
     for i in 0..iterations {
         if block.len() > 0 {
             let index = i as usize % block.len();
@@ -108,8 +119,8 @@ pub fn ghostweb(iterations: u32, block: &[i32], radius: f64, m: f64, t: f64) -> 
 
         state.i = i;
         state.r = radius; // * state.n; //(state.n + params.rms);
-        state.p1 = flavour_000(&state, &params);
-        state.p2 = flavour_001(&state, &params);
+        state.p1 = equation_1(&state, &params);
+        state.p2 = equation_2(&state, &params);
 
         xs.push(Feed {
             x1: state.p1.x,
@@ -134,28 +145,28 @@ fn advance(mut state: State, p: &Parameter) -> State {
     state
 }
 
-fn flavour_000(s: &State, p: &Parameter) -> Point {
+fn equation_000(s: &State, p: &Parameter) -> Point {
     let x: f64 = s.c.sin();
     let y: f64 = s.c.cos();
     let z: f64 = s.p1.z;
     Point { x: x, y: y, z: z }
 }
 
-fn flavour_001(s: &State, p: &Parameter) -> Point {
+fn equation_001(s: &State, p: &Parameter) -> Point {
     let x: f64 = s.c.sin();
     let y: f64 = (x.powf(3.) + 0.5 * x + 0.3333).sqrt();
     let z: f64 = s.p1.z;
     Point { x: x, y: y, z: z }
 }
 
-fn flavour_002(s: &State, p: &Parameter) -> Point {
+fn equation_002(s: &State, p: &Parameter) -> Point {
     let x: f64 = (s.c + s.p1.z).cos();
     let y: f64 = s.c2.sin();
     let z: f64 = ((x + y) * PI).cos();
     Point { x: x, y: y, z: z }
 }
 
-fn flavour_003(s: &State, p: &Parameter) -> Point {
+fn equation_003(s: &State, p: &Parameter) -> Point {
     let x: f64 = (p.t + s.c * s.p2.z).sin()
         * (s.c2 * p.t.powf(s.c3)).cos()
         * s.hbm.get([s.p2.x, s.p2.y, s.p2.z]);
@@ -164,17 +175,28 @@ fn flavour_003(s: &State, p: &Parameter) -> Point {
     Point { x: x, y: y, z: z }
 }
 
-fn flavour_004(s: &State, p: &Parameter) -> Point {
+fn equation_004(s: &State, p: &Parameter) -> Point {
     let x = ((s.c2 + p.t) + s.p1.z + s.n).sin();
     let y = (s.c3 + p.t).cos() * s.billow.get([s.p1.x, s.p1.x, p.t * 2000.]);
     let z = (s.sample * p.rms + p.t) * s.c;
     Point { x: x, y: y, z: z }
 }
 
-fn flavour_005(s: &State, p: &Parameter) -> Point {
+fn equation_005(s: &State, p: &Parameter) -> Point {
     let x = (s.c3 * s.r * s.n).sin() + (s.c * p.t - s.c2).cos();
     let y = s.c3.cos() * (s.n * p.t + p.rms).cos() + (p.t + (s.sample as f64).powf(E)).sin();
     let z = s.hbm.get([s.p1.x, s.p1.y, s.sample as f64])
         + s.billow.get([s.p2.x, s.p2.y, s.p2.z]) * s.sample;
     Point { x: x, y: y, z: z }
+}
+
+fn select_equation(index: usize) -> fn(&State, &Parameter) -> Point {
+    match index {
+        1 => equation_001,
+        2 => equation_002,
+        3 => equation_003,
+        4 => equation_004,
+        5 => equation_005,
+        _ => equation_000,
+    }
 }
