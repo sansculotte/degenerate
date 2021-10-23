@@ -160,9 +160,10 @@ fn equation_001(s: &State, p: &Parameter) -> Point {
 }
 
 fn equation_002(s: &State, p: &Parameter) -> Point {
-    let x: f64 = (s.c + s.p1.z).cos();
-    let y: f64 = s.c2.sin();
-    let z: f64 = ((x + y) * PI).cos();
+    let r = s.c / (2. * PI);
+    let x: f64 = s.c.cos() * r;
+    let y: f64 = s.c.sin() * r;
+    let z: f64 = ((x + y) * PI).tanh();
     Point { x: x, y: y, z: z }
 }
 
