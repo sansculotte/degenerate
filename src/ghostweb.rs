@@ -185,8 +185,8 @@ fn equation_004(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 }
 
 fn equation_005(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let x = (s.c3 * s.r * s.n).sin() + (s.c * p.t - s.c2).cos();
-    let y = s.c3.cos() * (s.n * p.t + p.rms).cos() + (p.t + (s.sample as f64).powf(E)).sin();
+    let x = (s.c3 * s.r * s.n).sin() + (s.c * p.t - s.c2).cos() - (p2.z + E).ln().cos();
+    let y = s.c3.cos() * (s.n * p1.z + p.rms).cos() + (p.t - (s.sample as f64).powf(E)).sin();
     let z = s.hbm.get([p1.x, p1.y, s.sample as f64])
         + s.billow.get([p2.x, p2.y, p2.z]) * s.sample;
     Point { x: x, y: y, z: z }
@@ -212,6 +212,13 @@ fn equation_007(s: &State, _p: &Parameter, p1: &Point, p2: &Point) -> Point {
     Point { x: x, y: y, z: z }
 }
 
+fn equation_008(s: &State, _p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let x = p1.x * 0.333 + s.c2.sin() - p1.z * 0.111;
+    let y = p2.y * (s.sample + 0.5) - s.c3.cos() * (s.c * s.n).sinh();
+    let z = (x * s.c2).sin() * (y * s.c * s.n).cos();
+    Point { x: x, y: y, z: z }
+}
+
 
 fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Point) -> Point {
     match index {
@@ -222,6 +229,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         5 => equation_005,
         6 => equation_006,
         7 => equation_007,
+        8 => equation_008,
         _ => equation_000,
     }
 }
