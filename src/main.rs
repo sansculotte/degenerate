@@ -8,6 +8,7 @@ mod lib;
 use cairo::{Context, Format, ImageSurface};
 use ghostweb::ghostweb;
 use pbr::ProgressBar;
+use std::convert::TryInto;
 use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
@@ -146,8 +147,9 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
     // set up drawing canvas
     let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
     let context = Context::new(&surface);
+    let block: [i32; 256] = (0..=255).collect::<Vec<_>>().try_into().expect("wrong size iterator");
 
-    let xs = ghostweb(iterations, &[0], radius, opt.f1, opt.f2, opt.m, opt.t);
+    let xs = ghostweb(iterations, &block, radius, opt.f1, opt.f2, opt.m, opt.t);
     draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
 
     let path = Path::new(&opt.outdir).join(format!("image.png"));
