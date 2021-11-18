@@ -135,6 +135,7 @@ pub fn ghostweb(
 
 fn advance(i: u32, mut state: State, p: &Parameter) -> State {
     let part = i as f64 / p.iterations as f64;
+
     state.i = i;
     state.c =  part * PI * 2.0;
     state.c2 = state.c * E;
@@ -142,7 +143,7 @@ fn advance(i: u32, mut state: State, p: &Parameter) -> State {
 
     state.rf = state.c / 2. + 0.15;
     state.n = state.rf * p.m * (1. - p.m);
-    state.r -= p.radius as f64 / p.iterations as f64;
+    state.r = p.radius * part;
     state
 }
 
@@ -185,7 +186,7 @@ fn equation_004(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 }
 
 fn equation_005(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let x = (s.c3 * s.r * s.n).sin() + (s.c * p.t - s.c2).cos() - (p2.z + E).ln().cos();
+    let x = (s.c3 * s.r * s.n).sin() + (s.c * p.t - s.c2).cos() - (p2.z + E).ln().sin();
     let y = s.c3.cos() * (s.n * p1.z + p.rms).cos() + (p.t - (s.sample as f64).powf(E)).sin();
     let z = s.hbm.get([p1.x, p1.y, s.sample as f64])
         + s.billow.get([p2.x, p2.y, p2.z]) * s.sample;
