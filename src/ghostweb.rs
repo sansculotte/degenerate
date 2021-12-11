@@ -33,6 +33,7 @@ struct State {
     pub c: f64,
     pub c2: f64,
     pub c3: f64,
+    pub c4: f64,
 
     pub r: f64,
 
@@ -85,6 +86,7 @@ pub fn ghostweb(
         c: 0.,
         c2: 0.,
         c3: 0.,
+        c4: 0.,
         p1: Point {
             x: 0.,
             y: 0.,
@@ -140,6 +142,7 @@ fn advance(i: u32, mut state: State, p: &Parameter) -> State {
     state.c =  part * PI * 2.0;
     state.c2 = state.c * E;
     state.c3 = state.c * PHI;
+    state.c4 = state.c * SQRT_2;
 
     state.rf = state.c / 2. + 0.15;
     state.n = state.rf * p.m * (1. - p.m);
@@ -224,23 +227,49 @@ fn equation_009(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let mut x = ((s.c * s.n + p2.x).cos() + (s.c3 + p2.z).sin() - p1.z * (s.c + s.n + p2.y).abs().sqrt() * s.c2).atan() / ATAN_SATURATION;
     let mut y = ((s.c2 * (x * PI + p2.x * s.sample).powf(PHI)).cos() + (s.c3.powf(p2.y)).sin() * p1.x * p2.z + (s.p1.z.abs() + p2.z.abs()).powf(p1.z)).atan() / ATAN_SATURATION;
     let mut z = (x.powf(s.c2) * y.powf(s.c3) - (p2.x + p1.x + p.rms).cos()).atan() / ATAN_SATURATION;
-    if x.is_nan() { x = s.hbm.get([p1.x, p1.y, p1.z]) };
-    if y.is_nan() { y = s.hbm.get([p1.x, p1.y, p1.z]) };
-    if z.is_nan() { z = s.hbm.get([p1.x, p1.y, p1.z]) };
+    if x.is_nan() { x = s.hbm.get([p1.x, p1.y, p.t]) };
+    if y.is_nan() { y = s.hbm.get([p1.x, p.t, p1.z]) };
+    if z.is_nan() { z = s.hbm.get([p.t, p1.y, p1.z]) };
     Point { x: x, y: y, z: z }
 }
 
+// totenschiff
+fn equation_010(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let mut x = s.c.sin() * (s.sample / 4.) + s.c2.cos() * (s.sample / 5.) - (p1.z * s.n).cosh() * (s.sample / 7.) + (s.c4 * s.c3).cos() * (s.sample / 9.) - p1.y * ((s.c2 * s.c3).cos() * p1.y).sqrt();
+    let mut y = s.c.cos() * (s.sample / 4.) + s.c2.sin() * (s.sample / 5.) - (p1.z * s.n).sinh() * (s.sample / 7.) + p1.y * (s.c2 * s.c3).sqrt() - (s.sample / 11.) * (s.c4 * s.c3).sin();
+    let mut z =
+        ((((x * s.r).sin() * PI * (y + p2.z)).cos() + (s.c + p1.z).powf(E) - PHI * s.c.cos() * (p1.z + y).powf(E) * (s.c3 * s.c2).ln() * s.c2.cos().powf(2.)).atan() / ATAN_SATURATION)
+        * s.n;
+    if x.is_nan() { x = s.osx.get([p.t, p1.y, p1.z]) };
+    if y.is_nan() { y = s.osx.get([p1.x, p.t, p1.z]) };
+    if z.is_nan() { z = s.osx.get([p1.x, p1.y, p.t]) };
+    if !x.is_finite() { x = s.hbm.get([p.t, p1.y, p1.z]) };
+    if !y.is_finite() { y = s.hbm.get([p1.x, p.t, p1.z]) };
+    if !z.is_finite() { z = s.hbm.get([p1.x, p1.y, p.t]) };
+    Point { x: x, y: y, z: z }
+}
+
+fn equation_011(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
+    let x = s.c.sin() + (2. * s.c.powf(2.)).sin() * s.c.cos();
+    let y = s.c.cos() + s.c.powf(2.).sin();
+    let z = x * y;
+    Point { x: x, y: y, z: z }
+}
+
+
 fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Point) -> Point {
     match index {
-        1 => equation_001,
-        2 => equation_002,
-        3 => equation_003,
-        4 => equation_004,
-        5 => equation_005,
-        6 => equation_006,
-        7 => equation_007,
-        8 => equation_008,
-        9 => equation_009,
-        _ => equation_000,
+        1  => equation_001,
+        2  => equation_002,
+        3  => equation_003,
+        4  => equation_004,
+        5  => equation_005,
+        6  => equation_006,
+        7  => equation_007,
+        8  => equation_008,
+        9  => equation_009,
+        10 => equation_010,
+        11 => equation_011,
+        _  => equation_000,
     }
 }
