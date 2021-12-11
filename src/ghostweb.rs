@@ -49,9 +49,9 @@ struct State {
     pub billow: Billow,
 }
 
-struct Parameter<'a> {
+struct Parameter {
     iterations: u32,
-    block: &'a [i32],
+    samples: Vec<f64>,
     radius: f64,
     m: f64,
     t: f64,
@@ -67,14 +67,13 @@ pub fn ghostweb(
     m: f64,
     t: f64
 ) -> Vec<Feed> {
-    let samples = normalize(block);
 
     // collected points
     let mut xs: Vec<Feed> = vec![];
 
     let params = Parameter {
         iterations: iterations,
-        block: block,
+        samples: normalize(block),
         radius: radius,
         m: m,
         t: t,
@@ -108,12 +107,6 @@ pub fn ghostweb(
     let equation_2 = select_equation(f2);
 
     for i in 0..iterations {
-        if block.len() > 0 {
-            let index = i as usize % block.len();
-            state.sample = samples[index];
-        } else {
-            state.sample = 0.;
-        }
 
         state = advance(i, state, &params);
 
@@ -135,6 +128,13 @@ pub fn ghostweb(
 
 fn advance(i: u32, mut state: State, p: &Parameter) -> State {
     let part = i as f64 / p.iterations as f64;
+
+    if p.samples.len() > 0 {
+        let index = i as usize % p.samples.len();
+        state.sample = p.samples[index];
+    } else {
+        state.sample = 0.;
+    }
 
     state.i = i;
     state.c =  part * PI * 2.0;
