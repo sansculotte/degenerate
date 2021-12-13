@@ -176,7 +176,7 @@ fn equation_003(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let x: f64 = (p.t + s.c * p2.z).sin()
         * (s.c2 * p.t.powf(s.c3)).cos()
         * s.hbm.get([p2.x, p2.y, p2.z]);
-    let y: f64 = (p.t * 4000. + s.c).sin() * (p.rms - p.t.powf(s.sample as f64)).sin();
+    let y: f64 = (p.t * E + s.c).sin() * (p.rms - p.t.powf(s.sample)).sin();
     let z: f64 = s.sample * s.osx.get([p1.x, p1.y, p.t]);
     Point { x: x, y: y, z: z }
 }
@@ -256,6 +256,13 @@ fn equation_011(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     Point { x: x, y: y, z: z }
 }
 
+fn equation_012(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let x = (s.c * p.t).cos() + p1.x / SQRT_2 - p2.x / E;
+    let y = s.sample * 1. / (p1.z.abs() * s.c2 + p.t).ln() * (x * PI + p1.z * E + p2.z * SQRT_2).sin();
+    let z = s.osx.get([s.sample, p.t, x]);
+    Point { x: x, y: y, z: z }
+}
+
 
 fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Point) -> Point {
     match index {
@@ -270,6 +277,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         9  => equation_009,
         10 => equation_010,
         11 => equation_011,
+        12 => equation_012,
         _  => equation_000,
     }
 }
