@@ -3,7 +3,6 @@ use noise::{Billow, HybridMulti, NoiseFn, OpenSimplex};
 use std::f64::consts::{E, PI, SQRT_2};
 
 const PHI: f64 = 1.618033988749;
-const ATAN_SATURATION: f64 = 1.569796;
 
 #[derive(Debug)]
 pub struct Feed {
@@ -150,21 +149,21 @@ fn advance(i: u32, mut state: State, p: &Parameter) -> State {
     state
 }
 
-fn equation_000(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+fn equation_000(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     let x: f64 = s.c.sin();
     let y: f64 = s.c.cos();
     let z: f64 = s.sample;
     Point { x: x, y: y, z: z }
 }
 
-fn equation_001(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+fn equation_001(s: &State, _p: &Parameter, _p1: &Point, p2: &Point) -> Point {
     let x: f64 = s.c.sin();
     let y: f64 = (x.powf(3.) + 0.5 * x + 0.3333).sqrt();
     let z: f64 = p2.z;
     Point { x: x, y: y, z: z }
 }
 
-fn equation_002(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+fn equation_002(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     let r = s.c / (2. * PI);
     let x: f64 = s.c.cos() * r;
     let y: f64 = s.c.sin() * r;
@@ -181,7 +180,7 @@ fn equation_003(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     Point { x: x, y: y, z: z }
 }
 
-fn equation_004(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+fn equation_004(s: &State, p: &Parameter, p1: &Point, _p2: &Point) -> Point {
     let x = ((s.c2 + p.t) + p1.z + s.n + p.rms).sin();
     let y = (s.c3 + p.t).cos() * s.billow.get([p1.x, p1.y, p.t * 2000.]);
     let z = (s.sample * p.rms + p.t).sin() * s.c;
@@ -198,8 +197,8 @@ fn equation_005(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 
 fn equation_006(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let mut x = s.c.sin() + (p2.z + p.t).ln() * (s.c2 * p2.z).cos() - s.sample;
-    let mut y = (s.c.cos() + (s.c2 * p1.z).sin() + (x + p1.z).powf(s.c3) * s.r).atan() / ATAN_SATURATION;
-    let mut z = (x.sin() + p.t * PI * (y + p2.z).cos() + s.c.powf(E) + (E * s.c.cos() * (SQRT_2 * y).cos()) + s.c3.sqrt() * s.c2.cos()).atan() / ATAN_SATURATION;
+    let mut y = (s.c.cos() + (s.c2 * p1.z).sin() + (x + p1.z).powf(s.c3) * s.r).tanh();
+    let mut z = (x.sin() + p.t * PI * (y + p2.z).cos() + s.c.powf(E) + (E * s.c.cos() * (SQRT_2 * y).cos()) + s.c3.sqrt() * s.c2.cos()).tanh();
     if x.is_nan() { x = s.osx.get([p1.x, p1.y, p.t]) };
     if y.is_nan() { y = s.osx.get([p1.x, p.t, p1.z]) };
     if z.is_nan() { z = s.osx.get([p.t, p1.y, p1.z]) };
@@ -207,9 +206,9 @@ fn equation_006(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 }
 
 fn equation_007(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let mut x = ((s.c * s.n * p.t).sin() + (s.c3 + p2.y).cos() * p1.z + s.sample * p2.z).atan() / ATAN_SATURATION;
-    let mut y = (s.c.cos() + (s.c2 * p2.x).sin() * p1.x * p2.z + (p1.z.abs() + p2.z.abs()).sqrt()).atan() / ATAN_SATURATION;
-    let mut z = (s.c2.sinh() + p.t.powf(s.c) + s.c3.tanh()).atan() / ATAN_SATURATION;
+    let mut x = ((s.c * s.n * p.t).sin() + (s.c3 + p2.y).cos() * p1.z + s.sample * p2.z).tanh();
+    let mut y = (s.c.cos() + (s.c2 * p2.x).sin() * p1.x * p2.z + (p1.z.abs() + p2.z.abs()).sqrt()).tanh();
+    let mut z = ((1. / s.c2).sinh() * PI / p.t.powf(s.c.cos() * E) + s.c3.sin()).tanh();
     if x.is_nan() { x = s.hbm.get([p.t, p1.y, p1.z]) };
     if y.is_nan() { y = s.hbm.get([p1.x, p.t, p1.z]) };
     if z.is_nan() { z = s.hbm.get([p1.x, p1.y, p.t]) };
@@ -218,15 +217,15 @@ fn equation_007(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 
 fn equation_008(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let x = p1.x * s.sample + s.c2.sin() - p1.z * p.rms;
-    let y = p2.y * (s.sample + 0.5) - s.c3.cos() * (s.c * s.n).sinh();
+    let y = p2.y * (s.sample + 0.5) - s.c3.cos() * (s.c * s.n).sin();
     let z = (x * s.c2 + p.t).sin() * (y * s.c * s.n).cos();
     Point { x: x, y: y, z: z }
 }
 
 fn equation_009(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let mut x = ((s.c * s.n + p2.x).cos() + (s.c3 + p2.z).sin() - p1.z * (s.c + s.n + p2.y).abs().sqrt() * s.c2).atan() / ATAN_SATURATION;
-    let mut y = ((s.c2 * (x * PI + p2.x * s.sample).powf(PHI)).cos() + (s.c3.powf(p2.y)).sin() * p1.x * p2.z + (s.p1.z.abs() + p2.z.abs()).powf(p1.z)).atan() / ATAN_SATURATION;
-    let mut z = (x.powf(s.c2) * y.powf(s.c3) - (p2.x + p1.x + p.rms).cos()).atan() / ATAN_SATURATION;
+    let mut x = ((s.c * s.n + p2.x).cos() + (s.c3 + p2.z).sin() - p1.z * (s.c + s.n + p2.y).abs().sqrt() * s.c2).tanh();
+    let mut y = ((s.c2 * (x * PI + p2.x * s.sample).powf(PHI)).cos() + (s.c3.powf(p2.y)).sin() * p1.x * p2.z + (s.p1.z.abs() + p2.z.abs()).powf(p1.z)).tanh();
+    let mut z = (x.powf(s.c2) * y.powf(s.c3) - (p2.x + p1.x + p.rms).cos()).tanh();
     if x.is_nan() { x = s.hbm.get([p1.x, p1.y, p.t]) };
     if y.is_nan() { y = s.hbm.get([p1.x, p.t, p1.z]) };
     if z.is_nan() { z = s.hbm.get([p.t, p1.y, p1.z]) };
@@ -238,7 +237,7 @@ fn equation_010(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let mut x = s.c.sin() * (s.sample / 4.) + s.c2.cos() * (s.sample / 5.) - (p1.z * s.n).cosh() * (s.sample / 7.) + (s.c4 * s.c3).cos() * (s.sample / 9.) - p1.y * ((s.c2 * s.c3).cos() * p1.y).sqrt();
     let mut y = s.c.cos() * (s.sample / 4.) + s.c2.sin() * (s.sample / 5.) - (p1.z * s.n).sinh() * (s.sample / 7.) + p1.y * (s.c2 * s.c3).sqrt() - (s.sample / 11.) * (s.c4 * s.c3).sin();
     let mut z =
-        ((((x * s.r).sin() * PI * (y + p2.z)).cos() + (s.c + p1.z).powf(E) - PHI * s.c.cos() * (p1.z + y).powf(E) * (s.c3 * s.c2).ln() * s.c2.cos().powf(2.)).atan() / ATAN_SATURATION)
+        ((((x * s.r).sin() * PI * (y + p2.z)).cos() + (s.c + p1.z).powf(E) - PHI * s.c.cos() * (p1.z + y).powf(E) * (s.c3 * s.c2).ln() * s.c2.cos().powf(2.)).tanh())
         * s.n;
     if x.is_nan() { x = s.osx.get([p.t, p1.y, p1.z]) };
     if y.is_nan() { y = s.osx.get([p1.x, p.t, p1.z]) };
