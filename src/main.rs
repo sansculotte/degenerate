@@ -74,6 +74,9 @@ struct Opt {
     #[structopt(short = "m", default_value = "0.2")]
     m: f64,
 
+    #[structopt(long, default_value = "")]
+    image: String,
+
     #[structopt(short, long, default_value = "/tmp")]
     outdir: String,
 
@@ -159,6 +162,9 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
     surface
         .write_to_png(&mut outfile)
         .expect("Could not write to output file");
+}
+
+fn image_distortion(iterations: u32, opt: Opt) {
 }
 
 fn draw(
