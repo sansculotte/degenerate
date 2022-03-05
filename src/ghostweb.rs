@@ -113,12 +113,16 @@ pub fn ghostweb(
         r: radius,
     };
 
-    let equation_1 = select_equation(f1);
-    let equation_2 = select_equation(f2);
-
     for i in 0..iterations {
 
         state = advance(i, state, &params);
+
+        let equation_1 = select_equation(
+            if f1 > 0 { f1 } else { (state.sample.abs() * 9.) as usize + 4 }
+        );
+        let equation_2 = select_equation(
+            if f2 > 0 { f2 } else { (state.fft_bin.im.abs() * 9.) as usize + 4 }
+        );
 
         state.p1 = equation_1(&state, &params, &state.p1, &state.p2);
         state.p2 = equation_2(&state, &params, &state.p2, &state.p1);
@@ -267,9 +271,16 @@ fn equation_011(s: &State, p: &Parameter, _p1: &Point, p2: &Point) -> Point {
 }
 
 fn equation_012(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let x = (s.c * p.t).cos() + p1.x / SQRT_2 - p2.x / E + s.fft_bin.re as f64;
+    let x = (s.c * p.t).cos() + p1.x / SQRT_2 - p2.x / E + ((s.fft_bin.re - 0.5) * 2.) as f64;
     let y = s.sample * 1. / (p1.z.abs() * s.c2 + p.t).ln() * (x * PI + p1.z * E + p2.z * SQRT_2).sin() - s.fft_bin.im as f64;
     let z = s.osx.get([s.sample, p.t, x]);
+    Point { x: x, y: y, z: z }
+}
+
+fn equation_013(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let x = (s.c * p2.y + p.t).cos() * s.c2.tan().fract() + p1.z * s.fft_bin.im as f64;
+    let y = (s.c * p2.x - p.t).sin() * (s.c2.powf(p2.z / (p.t + s.fft_bin.re as f64))).asin().fract() + p1.z * s.fft_bin.im as f64;
+    let z = x * s.fft_bin.re as f64 * s.sample + s.fft_bin.im as f64 * (p.t * PI + (x - p1.x) + (y - p1.y)).cos();
     Point { x: x, y: y, z: z }
 }
 
@@ -288,6 +299,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         10 => equation_010,
         11 => equation_011,
         12 => equation_012,
+        13 => equation_013,
         _  => equation_000,
     }
 }
