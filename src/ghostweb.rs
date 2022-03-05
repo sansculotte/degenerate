@@ -1,6 +1,7 @@
-use crate::lib::{normalize, rms};
+use crate::lib::{fft, normalize, rms};
 use noise::{Billow, HybridMulti, NoiseFn, OpenSimplex};
 use std::f64::consts::{E, PI, SQRT_2};
+use rustfft::{num_complex::Complex};
 
 const PHI: f64 = 1.618033988749;
 
@@ -24,10 +25,13 @@ struct Point {
 
 #[derive(Debug)]
 struct State {
-    // current iteraton
+    // current iteration
     pub i: u32,
 
+    pub index: usize,
+
     pub sample: f64,
+    pub fft_bin: Complex<f32>,
 
     pub c: f64,
     pub c2: f64,
@@ -52,6 +56,7 @@ struct State {
 struct Parameter {
     iterations: u32,
     samples: Vec<f64>,
+    fft: Vec<Complex<f32>>,
     radius: f64,
     m: f64,
     t: f64,
@@ -70,10 +75,12 @@ pub fn ghostweb(
 
     // collected points
     let mut xs: Vec<Feed> = vec![];
+    let samples = normalize(block);
 
     let params = Parameter {
         iterations: iterations,
-        samples: normalize(block),
+        samples: samples.to_owned(),
+        fft: fft(samples),
         radius: radius,
         m: m,
         t: t,
@@ -81,7 +88,9 @@ pub fn ghostweb(
     };
     let mut state = State {
         i: 0,
+        index: 0,
         sample: 0.,
+        fft_bin: Complex{re: 0., im: 0.},
         c: 0.,
         c2: 0.,
         c3: 0.,
@@ -133,6 +142,8 @@ fn advance(i: u32, mut state: State, p: &Parameter) -> State {
     if p.samples.len() > 0 {
         let index = i as usize % p.samples.len();
         state.sample = p.samples[index];
+        state.fft_bin = p.fft[index];
+        state.index = index;
     } else {
         state.sample = 0.;
     }
@@ -223,8 +234,8 @@ fn equation_008(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 }
 
 fn equation_009(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let mut x = ((s.c * s.n + p2.x).cos() + (s.c3 + p2.z).sin() - p1.z * (s.c + s.n + p2.y).abs().sqrt() * s.c2).tanh();
-    let mut y = ((s.c2 * (x * PI + p2.x * s.sample).powf(PHI)).cos() + (s.c3.powf(p2.y)).sin() * p1.x * p2.z + (s.p1.z.abs() + p2.z.abs()).powf(p1.z)).tanh();
+    let mut x = (p.t.sin() + (s.c * s.n + p2.x).cos() + (s.c3 + p2.z).sin() - p1.z * (s.c + s.n + p2.y).abs().sqrt() * s.c2).tanh();
+    let mut y = (p.t.cos() + (s.c2 * (x * PI + p2.x * s.sample).powf(PHI)).cos() + (s.c3.powf(p2.y)).sin() * p1.x * p2.z + (s.p1.z.abs() + p2.z.abs()).powf(p1.z)).tanh();
     let mut z = (x.powf(s.c2) * y.powf(s.c3) - (p2.x + p1.x + p.rms).cos()).tanh();
     if x.is_nan() { x = s.hbm.get([p1.x, p1.y, p.t]) };
     if y.is_nan() { y = s.hbm.get([p1.x, p.t, p1.z]) };
@@ -235,7 +246,7 @@ fn equation_009(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 // totenschiff
 fn equation_010(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let mut x = s.c.sin() * (s.sample / 4.) + s.c2.cos() * (s.sample / 5.) - (p1.z * s.n).cosh() * (s.sample / 7.) + (s.c4 * s.c3).cos() * (s.sample / 9.) - p1.y * ((s.c2 * s.c3).cos() * p1.y).sqrt();
-    let mut y = s.c.cos() * (s.sample / 4.) + s.c2.sin() * (s.sample / 5.) - (p1.z * s.n).sinh() * (s.sample / 7.) + p1.y * (s.c2 * s.c3).sqrt() - (s.sample / 11.) * (s.c4 * s.c3).sin();
+    let mut y = (p.t + s.c.cos() * (s.sample / 4.) + s.c2.sin() * (s.sample / 5.) - (p1.z * s.n).sinh() * (s.sample / 7.) + p1.y * (s.c2 * s.c3).sqrt() - (s.sample / 11.) * (s.c4 * s.c3).sin()).fract();
     let mut z =
         ((((x * s.r).sin() * PI * (y + p2.z)).cos() + (s.c + p1.z).powf(E) - PHI * s.c.cos() * (p1.z + y).powf(E) * (s.c3 * s.c2).ln() * s.c2.cos().powf(2.)).tanh())
         * s.n;
@@ -248,16 +259,16 @@ fn equation_010(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     Point { x: x, y: y, z: z }
 }
 
-fn equation_011(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
-    let x = s.c.sin() + (2. * s.c.powf(2.)).sin() * s.c.cos();
-    let y = s.c.cos() + s.c.powf(2.).sin();
-    let z = x * y;
+fn equation_011(s: &State, p: &Parameter, _p1: &Point, p2: &Point) -> Point {
+    let x = s.c.sin() - p2.z + s.c.powf(2.).cos() * ((s.fft_bin.re * s.index.pow(2) as f32) as f64).cos();
+    let y = (p.t + s.c.cos() + s.c.powf(2.).sin() * ((s.fft_bin.im * s.index.pow(2) as f32) as f64).sin()).fract();
+    let z = x * s.fft_bin.re as f64 + y * s.fft_bin.im as f64;
     Point { x: x, y: y, z: z }
 }
 
 fn equation_012(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let x = (s.c * p.t).cos() + p1.x / SQRT_2 - p2.x / E;
-    let y = s.sample * 1. / (p1.z.abs() * s.c2 + p.t).ln() * (x * PI + p1.z * E + p2.z * SQRT_2).sin();
+    let x = (s.c * p.t).cos() + p1.x / SQRT_2 - p2.x / E + s.fft_bin.re as f64;
+    let y = s.sample * 1. / (p1.z.abs() * s.c2 + p.t).ln() * (x * PI + p1.z * E + p2.z * SQRT_2).sin() - s.fft_bin.im as f64;
     let z = s.osx.get([s.sample, p.t, x]);
     Point { x: x, y: y, z: z }
 }
