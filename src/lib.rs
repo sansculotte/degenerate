@@ -22,12 +22,21 @@ pub fn normalize(samples: &[i32]) -> Vec<f64> {
 }
 
 pub fn fft(samples: Vec<f64>) -> Vec<Complex<f32>> {
+
     let size = samples.len();
     let mut planner = FftPlanner::<f32>::new();
     let fft = planner.plan_fft_forward(size);
-    let mut buffer = vec![Complex{ re: 0.0, im: 0.0 }; size];
+
+    let mut buffer = samples
+        .iter()
+        .map(| x | Complex{ re: *x as f32, im: 0.0f32 })
+        .collect::<Vec<Complex<f32>>>();
+
     fft.process(&mut buffer);
+
     buffer
+        .iter().map(| x | (x / size as f32).sqrt())
+        .collect::<Vec<Complex<f32>>>()
 }
 
 pub fn rms(samples: &[i32]) -> f64 {
