@@ -34,8 +34,10 @@ pub fn fft(samples: Vec<f64>) -> Vec<Complex<f32>> {
 
     fft.process(&mut buffer);
 
+    // scale
     buffer
-        .iter().map(| x | (x / size as f32).sqrt())
+        .iter()
+        .map(| x | (x / size as f32).sqrt())
         .collect::<Vec<Complex<f32>>>()
 }
 

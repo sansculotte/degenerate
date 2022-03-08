@@ -171,9 +171,9 @@ fn equation_000(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     Point { x: x, y: y, z: z }
 }
 
-fn equation_001(s: &State, _p: &Parameter, _p1: &Point, p2: &Point) -> Point {
-    let x: f64 = s.c.sin();
-    let y: f64 = (x.powf(3.) + 0.5 * x + 0.3333).sqrt();
+fn equation_001(s: &State, p: &Parameter, _p1: &Point, p2: &Point) -> Point {
+    let x: f64 = (p.t * PHI * PI).cos() + s.c.sin();
+    let y: f64 = (p.t * PHI * PI).sin() + (x.powf(3.) + 0.5 * x + 0.3333).sqrt();
     let z: f64 = p2.z;
     Point { x: x, y: y, z: z }
 }
@@ -212,8 +212,18 @@ fn equation_005(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 
 fn equation_006(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let mut x = s.c.sin() + (p2.z + p.t).ln() * (s.c2 * p2.z).cos() - s.sample;
-    let mut y = (s.c.cos() + (s.c2 * p1.z).sin() + (x + p1.z).powf(s.c3) * s.r).tanh();
-    let mut z = (x.sin() + p.t * PI * (y + p2.z).cos() + s.c.powf(E) + (E * s.c.cos() * (SQRT_2 * y).cos()) + s.c3.sqrt() * s.c2.cos()).tanh();
+    let mut y = (
+        s.c.cos()
+            + (s.c2 * p1.z).sin()
+            + (x + p1.z).powf(s.c3) * s.r
+        ).fract();
+    let mut z = (
+        x.sin()
+            + p.t * PI * (y + p2.z).cos()
+            + s.c.powf(E)
+            + (E * s.c.cos() * (SQRT_2 * y).cos())
+            + s.c3.sqrt() * s.c2.cos()
+        ).tanh();
     if x.is_nan() { x = s.osx.get([p1.x, p1.y, p.t]) };
     if y.is_nan() { y = s.osx.get([p1.x, p.t, p1.z]) };
     if z.is_nan() { z = s.osx.get([p.t, p1.y, p1.z]) };
@@ -231,15 +241,15 @@ fn equation_007(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 }
 
 fn equation_008(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let x = p1.x * s.sample + s.c2.sin() - p1.z * p.rms;
-    let y = p2.y * (s.sample + 0.5) - s.c3.cos() * (s.c * s.n).sin();
-    let z = (x * s.c2 + p.t).sin() * (y * s.c * s.n).cos();
+    let x = p1.x * s.sample + s.fft_bin.re as f64 + s.c2.sin() - p1.z * p.rms;
+    let y = p2.y * (s.sample + 0.5) + s.fft_bin.im as f64 - s.c3.cos() * (s.c * s.n).sin();
+    let z = (x * s.c2 + p.t * 8. * PI).sin() * (y * s.c * s.n).cos();
     Point { x: x, y: y, z: z }
 }
 
 fn equation_009(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let mut x = (p.t.sin() + (s.c * s.n + p2.x).cos() + (s.c3 + p2.z).sin() - p1.z * (s.c + s.n + p2.y).abs().sqrt() * s.c2).tanh();
-    let mut y = (p.t.cos() + (s.c2 * (x * PI + p2.x * s.sample).powf(PHI)).cos() + (s.c3.powf(p2.y)).sin() * p1.x * p2.z + (s.p1.z.abs() + p2.z.abs()).powf(p1.z)).tanh();
+    let mut x = (p.t * PI * 2. + (s.c * s.n + p2.x).cos() + (s.c3 + p2.z).sin() - p1.z * (s.c + s.n + p2.y).abs().sqrt() * s.c2).tanh();
+    let mut y = (p.t * PI * 2. + (s.c2 * (x * PI + p2.x * s.sample).powf(PHI)).sin() + (s.c3.powf(p2.y)).cos() * p1.x * (s.fft_bin.re as f64 + p2.z) + (s.p1.z.abs() + p2.z.abs()).powf(p1.z)).tanh();
     let mut z = (x.powf(s.c2) * y.powf(s.c3) - (p2.x + p1.x + p.rms).cos()).tanh();
     if x.is_nan() { x = s.hbm.get([p1.x, p1.y, p.t]) };
     if y.is_nan() { y = s.hbm.get([p1.x, p.t, p1.z]) };
@@ -278,9 +288,16 @@ fn equation_012(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 }
 
 fn equation_013(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let x = (s.c * p2.y + p.t).cos() * s.c2.tan().fract() + p1.z * s.fft_bin.im as f64;
-    let y = (s.c * p2.x - p.t).sin() * (s.c2.powf(p2.z / (p.t + s.fft_bin.re as f64))).asin().fract() + p1.z * s.fft_bin.im as f64;
-    let z = x * s.fft_bin.re as f64 * s.sample + s.fft_bin.im as f64 * (p.t * PI + (x - p1.x) + (y - p1.y)).cos();
+    let mut x = (p.t * PI * 9.).sin() + (s.c * p2.y + p.t).cos() * s.c2.tan().fract() + p1.z * s.fft_bin.im as f64;
+    let mut y = (p.t * PI * 12.).cos()
+        + (s.c * p2.x - p.t).sin() * (s.c2.powf(p2.z / (p.t + s.fft_bin.re as f64))).asin().fract()
+        + p1.z * s.fft_bin.im as f64;
+    let mut z = x * s.fft_bin.re as f64 * s.sample
+        + s.fft_bin.re as f64 * (p.t * PI + (x - p1.x)
+        + (y - p1.y)).cos();
+    if x.is_nan() { x = s.osx.get([p.t, p1.y, p1.z]) };
+    if y.is_nan() { y = s.osx.get([p1.x, p.t, p1.z]) };
+    if z.is_nan() { z = s.osx.get([p1.x, p1.y, p.t]) };
     Point { x: x, y: y, z: z }
 }
 
