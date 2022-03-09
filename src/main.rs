@@ -59,7 +59,7 @@ struct Opt {
     #[structopt(long, default_value = "0")]
     f1: usize,
 
-    #[structopt(long, default_value = "1")]
+    #[structopt(long, default_value = "0")]
     f2: usize,
 
     #[structopt(short = "t", default_value = "1.0")]
