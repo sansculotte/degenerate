@@ -295,9 +295,9 @@ fn equation_013(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let mut z = x * s.fft_bin.re as f64 * s.sample
         + s.fft_bin.re as f64 * (p.t * PI + (x - p1.x)
         + (y - p1.y)).cos();
-    if x.is_nan() { x = s.osx.get([p.t, p1.y, p1.z]) };
+    if x.is_nan() { x = s.osx.get([p2.x, p2.y, p.t]) };
     if y.is_nan() { y = s.osx.get([p1.x, p.t, p1.z]) };
-    if z.is_nan() { z = s.osx.get([p1.x, p1.y, p.t]) };
+    if z.is_nan() { z = s.osx.get([p.t, p2.y, p2.z]) };
     Point { x: x, y: y, z: z }
 }
 
