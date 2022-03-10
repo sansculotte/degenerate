@@ -77,6 +77,9 @@ struct Opt {
     #[structopt(short, long, default_value = "/tmp")]
     outdir: String,
 
+    #[structopt(short, long, default_value = "image.png")]
+    filename: String,
+
     #[structopt(default_value = "")]
     soundfile: String,
 }
@@ -152,7 +155,7 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
     let xs = ghostweb(iterations, &block, radius, opt.f1, opt.f2, opt.m, opt.t);
     draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
 
-    let path = Path::new(&opt.outdir).join(format!("image.png"));
+    let path = Path::new(&opt.outdir).join(&opt.filename);
 
     let mut outfile = File::create(path).expect("Could not open output file");
 
