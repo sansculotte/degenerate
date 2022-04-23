@@ -302,6 +302,14 @@ fn equation_013(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 }
 
 
+fn equation_014(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let x = s.c3.sin() + (s.c * PHI * s.osx.get([p.t, s.fft_bin.im as f64, s.fft_bin.re as f64])).cos();
+    let y = s.c3.cos() + (s.c2 * s.hbm.get([p.t, s.fft_bin.im as f64, s.fft_bin.re as f64])).sin();
+    let z = s.billow.get([p.t, x, y]);
+    Point { x: x, y: y, z: z }
+}
+
+
 fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Point) -> Point {
     match index {
         1  => equation_001,
@@ -317,6 +325,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         11 => equation_011,
         12 => equation_012,
         13 => equation_013,
+        14 => equation_014,
         _  => equation_000,
     }
 }
