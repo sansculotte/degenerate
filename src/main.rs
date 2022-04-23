@@ -59,7 +59,7 @@ struct Opt {
     #[structopt(long, default_value = "0")]
     f1: usize,
 
-    #[structopt(long, default_value = "1")]
+    #[structopt(long, default_value = "0")]
     f2: usize,
 
     #[structopt(short = "t", default_value = "1.0")]
@@ -71,7 +71,10 @@ struct Opt {
     #[structopt(short = "M", long, parse(try_from_str = parse_method), default_value = "dot")]
     method: Method,
 
-    #[structopt(short = "m", default_value = "0.2")]
+    #[structopt(short, long, default_value = "0.5")]
+    size: f64,
+
+    #[structopt(short, default_value = "0.2")]
     m: f64,
 
     #[structopt(long, default_value = "")]
@@ -79,6 +82,9 @@ struct Opt {
 
     #[structopt(short, long, default_value = "/tmp")]
     outdir: String,
+
+    #[structopt(short, long, default_value = "image.png")]
+    filename: String,
 
     #[structopt(default_value = "")]
     soundfile: String,
@@ -127,7 +133,7 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
     for (i, block) in samples.chunks(blocksize).enumerate() {
         let t = i as f64 / duration as f64 * opt.t;
         let xs = ghostweb(iterations, block, radius, opt.f1, opt.f2, opt.m, t);
-        draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
+        draw(&context, &xs, opt.width, opt.height, opt.size, opt.debug, &method);
 
         let path = Path::new(&opt.outdir).join(format!("{:01$}.png", i, 6));
 
@@ -153,9 +159,9 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
     let block: [i32; 256] = (0..=255).collect::<Vec<_>>().try_into().expect("wrong size iterator");
 
     let xs = ghostweb(iterations, &block, radius, opt.f1, opt.f2, opt.m, opt.t);
-    draw(&context, &xs, opt.width, opt.height, opt.debug, &method);
+    draw(&context, &xs, opt.width, opt.height, opt.size, opt.debug, &method);
 
-    let path = Path::new(&opt.outdir).join(format!("image.png"));
+    let path = Path::new(&opt.outdir).join(&opt.filename);
 
     let mut outfile = File::create(path).expect("Could not open output file");
 
@@ -172,6 +178,7 @@ fn draw(
     xs: &Vec<ghostweb::Feed>,
     width: u32,
     height: u32,
+    size: f64,
     debug: bool,
     method: &Method,
 ) {
@@ -211,7 +218,7 @@ fn draw(
                 context.rectangle(crx1, cry1, 0.5, 0.5);
                 context.stroke();
                 context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
-                context.rectangle(crx2, cry2, 0.5, 0.5);
+                context.rectangle(crx2, cry2, x.z1.abs() * size, x.y2.abs() * size);
             }
             Method::Line => context.line_to(crx2, cry2),
         }
