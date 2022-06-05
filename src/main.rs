@@ -259,31 +259,31 @@ fn draw(
             println!("{:?}", x);
         }
 
-        let crx1 = cx + x.x1 * x.radius;
-        let cry1 = cy + x.y1 * x.radius;
-        let crx2 = cx + x.x2 * x.radius;
-        let cry2 = cy + x.y2 * x.radius;
+        let crx1 = cx + x.p1.x * x.radius;
+        let cry1 = cy + x.p1.y * x.radius;
+        let crx2 = cx + x.p2.x * x.radius;
+        let cry2 = cy + x.p2.y * x.radius;
 
         context.set_line_width(0.1);
         context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
         context.move_to(crx1, cry1);
 
         match method {
-            Method::Arc => context.arc(crx1, cry1, x.radius, x.z1, x.z2),
+            Method::Arc => context.arc(crx1, cry1, x.radius, x.p1.z, x.p2.z),
             Method::Curve => context.curve_to(
                 crx1,
                 cry1,
                 crx2,
                 cry2,
-                cx + x.z1 * x.radius,
-                cy + x.z2 * x.radius,
+                cx + x.p1.z * x.radius,
+                cy + x.p2.z * x.radius,
             ),
             Method::Dot => {
                 context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
                 context.rectangle(crx1, cry1, 0.5, 0.5);
                 context.stroke();
                 context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
-                context.rectangle(crx2, cry2, x.z1.abs() * size, x.y2.abs() * size);
+                context.rectangle(crx2, cry2, x.p1.z.abs() * size, x.p2.y.abs() * size);
             }
             Method::Line => context.line_to(crx2, cry2),
         }

@@ -5,25 +5,21 @@ use std::f64::consts::{E, PI, SQRT_2};
 
 const PHI: f64 = 1.618033988749;
 
-#[derive(Debug)]
-pub struct Feed {
-    pub x1: f64,
-    pub y1: f64,
-    pub z1: f64,
-    pub x2: f64,
-    pub y2: f64,
-    pub z2: f64,
-    pub radius: f64,
-}
-
-#[derive(Debug)]
-struct Point {
+#[derive(Debug, Clone)]
+pub struct Point {
     pub x: f64,
     pub y: f64,
     pub z: f64,
 }
 
 #[derive(Debug)]
+pub struct Feed {
+    pub p1: Point,
+    pub p2: Point,
+    pub radius: f64,
+}
+
+#[derive(Debug, Clone)]
 struct State {
     // current iteration
     pub i: u32,
@@ -130,12 +126,8 @@ pub fn ghostweb(
         state.p2 = equation_2(&state, &params, &state.p2, &state.p1);
 
         xs.push(Feed {
-            x1: state.p1.x,
-            y1: state.p1.y,
-            z1: state.p1.z,
-            x2: state.p2.x,
-            y2: state.p2.y,
-            z2: state.p2.z,
+            p1: state.p1.clone(),
+            p2: state.p2.clone(),
             radius: state.r,
         });
     }
