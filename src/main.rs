@@ -15,12 +15,50 @@ use structopt::StructOpt;
 
 const VERSION: &str = "0.0.2";
 
-#[derive(Debug)]
+
+#[derive(Debug, Clone)]
 enum Method {
     Arc,
     Curve,
     Dot,
     Line,
+}
+
+#[derive(Debug)]
+struct RenderConfig {
+    // iterations (point pairs)  per frame
+    iterations: u32, 
+    // expansion radius
+    radius: f64,
+    // time
+    t: f64,
+    // m parameter for exponential transfer function
+    m: f64 ,
+    f1: usize,
+    f2: usize,
+    block: [i32; 256],
+    width: u32,
+    height: u32,
+    method: Method,
+    size: f64,
+}
+
+impl RenderConfig {
+    pub fn new(iterations: u32, radius: f64, block: [i32; 256], t: f64, opt: &Opt) -> Self {
+        Self {
+            iterations,
+            radius,
+            t,
+            m: opt.m,
+            f1: opt.f1,
+            f2: opt.f2,
+            block,
+            width: opt.width,
+            height: opt.height,
+            method: opt.method.clone(),
+            size: opt.size,
+        }
+    }
 }
 
 // to select a method by string for structopt
@@ -83,7 +121,10 @@ struct Opt {
     #[structopt(short, long, default_value = "/tmp")]
     outdir: String,
 
-    #[structopt(short, long, default_value = "image.png")]
+    #[structopt(short, long, default_value = "1")]
+    frames: usize,
+
+    #[structopt(short = "n", long, default_value = "image.png")]
     filename: String,
 
     #[structopt(default_value = "")]
@@ -98,79 +139,103 @@ fn main() {
     } else {
         opt.width * opt.height
     };
+
     let radius = if opt.radius > 0. {
         opt.radius
     } else {
         (opt.width / 2) as f64
     };
 
-    if opt.soundfile == "" {
+    if !opt.image.is_empty()  {
+        image_distortion(iterations, radius, opt)
+    } else if opt.soundfile.is_empty() {
         single_frame(iterations, radius, opt)
     } else {
         multi_frame(iterations, radius, opt)
     }
 }
 
+
+fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
+    let surface = ImageSurface::create(
+        Format::ARgb32,
+        conf.width as i32,
+        conf.height as i32
+    ).unwrap();
+    let context = Context::new(&surface);
+    let xs = ghostweb(
+        conf.iterations,
+        &conf.block,
+        conf.radius,
+        conf.f1,
+        conf.f2,
+        conf.m,
+        conf.t
+    );
+    draw(
+        &context,
+        &xs,
+        conf.width,
+        conf.height,
+        conf.size,
+        debug,
+        &conf.method,
+    );
+    surface
+}
+
+fn save_frame(surface: ImageSurface, outdir: &String, filename: String) {
+    let path = Path::new(outdir).join(format!("{}.png", filename));
+    let mut outfile = File::create(path).expect("Could not open output file");
+    surface
+        .write_to_png(&mut outfile)
+        .expect("Could not write to output file");
+}
+
 fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
-    let width = opt.width;
-    let height = opt.height;
-    let method = opt.method;
 
     // load soundfile
-    let mut reader = hound::WavReader::open(opt.soundfile).unwrap();
+    let mut reader = hound::WavReader::open(opt.soundfile.clone()).unwrap();
     let spec: hound::WavSpec = reader.spec();
     let duration = reader.duration();
     let blocksize: usize = (spec.sample_rate as usize / opt.fps) * spec.channels as usize;
     let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
+    assert!(blocksize > 0);
     let frames = samples.len() / blocksize;
-
-    // set up drawing canvas
-    let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
-    let context = Context::new(&surface);
+    let outdir = opt.outdir.clone();
 
     let mut pb = ProgressBar::new(frames as u64);
 
     for (i, block) in samples.chunks(blocksize).enumerate() {
         let t = i as f64 / duration as f64 * opt.t;
-        let xs = ghostweb(iterations, block, radius, opt.f1, opt.f2, opt.m, t);
-        draw(&context, &xs, opt.width, opt.height, opt.size, opt.debug, &method);
-
-        let path = Path::new(&opt.outdir).join(format!("{:01$}.png", i, 6));
-
-        let mut outfile = File::create(path).expect("Could not open output file");
-
-        surface
-            .write_to_png(&mut outfile)
-            .expect("Could not write to output file");
-
+        let filename = format!("{:01$}", i, 6);
+        let config = RenderConfig::new(iterations, radius, block.try_into().expect("shit"), t, &opt);
+        save_frame(
+            render_frame(config, opt.debug),
+            &outdir,
+            filename
+        );
         pb.inc();
     }
     pb.finish_print("done!");
 }
 
 fn single_frame(iterations: u32, radius: f64, opt: Opt) {
-    let width = opt.width;
-    let height = opt.height;
-    let method = opt.method;
 
-    // set up drawing canvas
-    let surface = ImageSurface::create(Format::ARgb32, width as i32, height as i32).unwrap();
-    let context = Context::new(&surface);
-    let block: [i32; 256] = (0..=255).collect::<Vec<_>>().try_into().expect("wrong size iterator");
+    let block: [i32; 256] = (0..=255)
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("wrong size iterator");
 
-    let xs = ghostweb(iterations, &block, radius, opt.f1, opt.f2, opt.m, opt.t);
-    draw(&context, &xs, opt.width, opt.height, opt.size, opt.debug, &method);
-
-    let path = Path::new(&opt.outdir).join(&opt.filename);
-
-    let mut outfile = File::create(path).expect("Could not open output file");
-
-    surface
-        .write_to_png(&mut outfile)
-        .expect("Could not write to output file");
+    let config = RenderConfig::new(iterations, radius, block, opt.t, &opt);
+    save_frame(
+        render_frame(config, opt.debug),
+        &opt.outdir,
+        opt.filename
+    );
 }
 
-fn image_distortion(iterations: u32, opt: Opt) {
+fn image_distortion(iterations: u32, radius: f64, opt: Opt) {
 }
 
 fn draw(
