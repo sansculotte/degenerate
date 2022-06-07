@@ -125,7 +125,7 @@ struct Opt {
     #[structopt(short, long, default_value = "0")]
     frames: usize,
 
-    #[structopt(short = "n", long, default_value = "image.png")]
+    #[structopt(short = "n", long, default_value = "image")]
     filename: String,
 
     #[structopt(default_value = "")]
