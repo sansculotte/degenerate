@@ -8,6 +8,7 @@ mod lib;
 use cairo::{Context, Format, ImageSurface};
 use ghostweb::ghostweb;
 use pbr::ProgressBar;
+use std::cmp;
 use std::convert::TryInto;
 use std::fs::File;
 use std::path::Path;
@@ -27,16 +28,16 @@ enum Method {
 #[derive(Debug)]
 struct RenderConfig {
     // iterations (point pairs)  per frame
-    iterations: u32, 
+    iterations: u32,
     // expansion radius
     radius: f64,
     // time
     t: f64,
     // m parameter for exponential transfer function
-    m: f64 ,
+    m: f64,
     f1: usize,
     f2: usize,
-    block: [i32; 256],
+    block: Vec<i32>,
     width: u32,
     height: u32,
     method: Method,
@@ -44,7 +45,7 @@ struct RenderConfig {
 }
 
 impl RenderConfig {
-    pub fn new(iterations: u32, radius: f64, block: [i32; 256], t: f64, opt: &Opt) -> Self {
+    pub fn new(iterations: u32, radius: f64, block: Vec<i32>, t: f64, opt: &Opt) -> Self {
         Self {
             iterations,
             radius,
@@ -121,7 +122,7 @@ struct Opt {
     #[structopt(short, long, default_value = "/tmp")]
     outdir: String,
 
-    #[structopt(short, long, default_value = "1")]
+    #[structopt(short, long, default_value = "0")]
     frames: usize,
 
     #[structopt(short = "n", long, default_value = "image.png")]
@@ -162,7 +163,7 @@ fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
         conf.width as i32,
         conf.height as i32
     ).unwrap();
-    let context = Context::new(&surface);
+    let context = Context::new(&surface).unwrap();
     let xs = ghostweb(
         conf.iterations,
         &conf.block,
@@ -184,7 +185,7 @@ fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
     surface
 }
 
-fn save_frame(surface: ImageSurface, outdir: &String, filename: String) {
+fn save_frame(surface: ImageSurface, outdir: &String, filename: &String) {
     let path = Path::new(outdir).join(format!("{}.png", filename));
     let mut outfile = File::create(path).expect("Could not open output file");
     surface
@@ -200,20 +201,32 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
     let duration = reader.duration();
     let blocksize: usize = (spec.sample_rate as usize / opt.fps) * spec.channels as usize;
     let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
-    assert!(blocksize > 0);
-    let frames = samples.len() / blocksize;
+    let frames = if opt.frames > 0 {
+        cmp::min(opt.frames, samples.len() / blocksize)
+    } else {
+        samples.len() / blocksize
+    };
     let outdir = opt.outdir.clone();
 
     let mut pb = ProgressBar::new(frames as u64);
 
+    if opt.debug {
+        println!("blocksize: {:?}", blocksize);
+        println!("frames: {:?}", frames);
+        println!("samples: {:?}", samples.len());
+    }
+
     for (i, block) in samples.chunks(blocksize).enumerate() {
+        if i >= frames {
+            continue;
+        }
         let t = i as f64 / duration as f64 * opt.t;
         let filename = format!("{:01$}", i, 6);
-        let config = RenderConfig::new(iterations, radius, block.try_into().expect("shit"), t, &opt);
+        let config = RenderConfig::new(iterations, radius, block.try_into().expect("fuck"), t, &opt);
         save_frame(
             render_frame(config, opt.debug),
             &outdir,
-            filename
+            &filename
         );
         pb.inc();
     }
@@ -222,16 +235,18 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
 
 fn single_frame(iterations: u32, radius: f64, opt: Opt) {
 
-    let block: [i32; 256] = (0..=255)
+    // ramp up
+    let block: Vec<i32> = (0..=255)
         .collect::<Vec<_>>()
         .try_into()
         .expect("wrong size iterator");
 
     let config = RenderConfig::new(iterations, radius, block, opt.t, &opt);
+
     save_frame(
         render_frame(config, opt.debug),
         &opt.outdir,
-        opt.filename
+        &opt.filename
     );
 }
 

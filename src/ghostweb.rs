@@ -349,7 +349,7 @@ fn equation_013(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     Point { x: x, y: y, z: z }
 }
 
-fn equation_014(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+fn equation_014(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     let x =
         s.c3.sin() + (s.c * PHI * s.osx.get([p.t, s.fft_bin.im as f64, s.fft_bin.re as f64])).cos();
     let y = s.c3.cos() + (s.c2 * s.hbm.get([p.t, s.fft_bin.im as f64, s.fft_bin.re as f64])).sin();
