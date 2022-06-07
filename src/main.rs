@@ -267,7 +267,7 @@ fn draw(
 
     // black out
     context.set_source_rgb(0.0, 0.0, 0.0);
-    context.paint();
+    context.paint().unwrap();
 
     for x in xs {
         if debug {
@@ -296,12 +296,12 @@ fn draw(
             Method::Dot => {
                 context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
                 context.rectangle(crx1, cry1, 0.5, 0.5);
-                context.stroke();
+                context.stroke().unwrap();
                 context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
                 context.rectangle(crx2, cry2, x.p1.z.abs() * size, x.p2.y.abs() * size);
             }
             Method::Line => context.line_to(crx2, cry2),
         }
-        context.stroke();
+        context.stroke().unwrap();
     }
 }

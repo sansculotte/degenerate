@@ -11,7 +11,7 @@ png = "0.17.5"
 rand = "0.8.3"
 structopt = "0.3"
 noise = "0.7.0"
-cairo-rs = { version = "0.9.1", features = ["png"] }
+cairo-rs = { version = "0.15.11", features = ["png"] }
 pbr = "1.0.4"
 hound = "*"
 rustfft = "6.0.1"
