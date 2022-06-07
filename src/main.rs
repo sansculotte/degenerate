@@ -14,7 +14,7 @@ use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
 
-const VERSION: &str = "0.0.2";
+const VERSION: &str = "0.0.3";
 
 
 #[derive(Debug, Clone)]
