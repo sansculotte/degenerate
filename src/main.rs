@@ -1,6 +1,7 @@
 extern crate cairo;
 extern crate hound;
 extern crate structopt;
+extern crate image;
 
 mod ghostweb;
 mod lib;
@@ -45,7 +46,7 @@ struct RenderConfig {
 }
 
 impl RenderConfig {
-    pub fn new(iterations: u32, radius: f64, block: Vec<i32>, t: f64, opt: &Opt) -> Self {
+    pub fn new(iterations: u32, method: Method, radius: f64, block: Vec<i32>, t: f64, opt: &Opt) -> Self {
         Self {
             iterations,
             radius,
@@ -56,7 +57,7 @@ impl RenderConfig {
             block,
             width: opt.width,
             height: opt.height,
-            method: opt.method.clone(),
+            method: method,
             size: opt.size,
         }
     }
@@ -148,49 +149,12 @@ fn main() {
     };
 
     if !opt.image.is_empty()  {
-        image_distortion(iterations, radius, opt)
+        image_displacement(radius, opt)
     } else if opt.soundfile.is_empty() {
         single_frame(iterations, radius, opt)
     } else {
         multi_frame(iterations, radius, opt)
     }
-}
-
-
-fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
-    let surface = ImageSurface::create(
-        Format::ARgb32,
-        conf.width as i32,
-        conf.height as i32
-    ).unwrap();
-    let context = Context::new(&surface).unwrap();
-    let xs = ghostweb(
-        conf.iterations,
-        &conf.block,
-        conf.radius,
-        conf.f1,
-        conf.f2,
-        conf.m,
-        conf.t
-    );
-    draw(
-        &context,
-        &xs,
-        conf.width,
-        conf.height,
-        conf.size,
-        debug,
-        &conf.method,
-    );
-    surface
-}
-
-fn save_frame(surface: ImageSurface, outdir: &String, filename: &String) {
-    let path = Path::new(outdir).join(format!("{}.png", filename));
-    let mut outfile = File::create(path).expect("Could not open output file");
-    surface
-        .write_to_png(&mut outfile)
-        .expect("Could not write to output file");
 }
 
 fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
@@ -222,7 +186,14 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
         }
         let t = i as f64 / duration as f64 * opt.t;
         let filename = format!("{:01$}", i, 6);
-        let config = RenderConfig::new(iterations, radius, block.try_into().expect("fuck"), t, &opt);
+        let config = RenderConfig::new(
+            iterations,
+            opt.method.clone(),
+            radius,
+            block.try_into().expect("fuck"),
+            t,
+            &opt
+        );
         save_frame(
             render_frame(config, opt.debug),
             &outdir,
@@ -241,8 +212,14 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
         .try_into()
         .expect("wrong size iterator");
 
-    let config = RenderConfig::new(iterations, radius, block, opt.t, &opt);
-
+    let config = RenderConfig::new(
+        iterations,
+        opt.method.clone(),
+        radius,
+        block,
+        opt.t,
+        &opt
+    );
     save_frame(
         render_frame(config, opt.debug),
         &opt.outdir,
@@ -250,10 +227,96 @@ fn single_frame(iterations: u32, radius: f64, opt: Opt) {
     );
 }
 
-fn image_distortion(iterations: u32, radius: f64, opt: Opt) {
+fn image_displacement(radius: f64, opt: Opt) {
+
+    let outdir = opt.outdir.clone();
+    let path = Path::new(&opt.image);
+
+    let image = image::open(path).expect("Could not open image file").into_luma8();
+
+    let block: Vec<i32> = (0..=255)
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("wrong size iterator");
+
+    let ( width, height ) = image.dimensions();
+    let iterations = width * height;
+
+    let mut xs: Vec<ghostweb::Feed> = vec![];
+    for (xi, yi, px) in image.enumerate_pixels() {
+        let x: f64 = (xi as f64 - width as f64 / 2.) / width as f64;
+        let y: f64 = (yi as f64 - height as f64 / 2.) / height as f64;
+        if opt.debug {
+            println!("{} {} {}", x, y, px[0]);
+        }
+        if px[0] > 128 {
+            xs.push(
+                ghostweb::Feed {
+                    p1: ghostweb::Point { x: x, y: y, z: 1. },
+                    p2: ghostweb::Point { x: 0., y: 0., z: 0. },
+                    radius: height as f64 / 2. 
+                }
+            );
+        }
+    }
+
+    for i in 0..opt.frames {
+        let t = i as f64 / opt.frames as f64;
+        let filename = format!("{:01$}", i, 6);
+        let config = RenderConfig::new(iterations, Method::Dot, radius, block.clone(), t, &opt);
+        let frame = render_displacement_frame(config, &xs, opt.debug);
+        save_frame(frame, &outdir, &filename);
+    }
 }
 
-fn draw(
+fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
+    let surface = ImageSurface::create(
+        Format::ARgb32,
+        conf.width as i32,
+        conf.height as i32
+    ).unwrap();
+    let context = Context::new(&surface).unwrap();
+    let xs = ghostweb(
+        conf.iterations,
+        &conf.block,
+        conf.radius,
+        conf.f1,
+        conf.f2,
+        conf.m,
+        conf.t
+    );
+    draw_frame(
+        &context,
+        &xs,
+        conf.width,
+        conf.height,
+        conf.size,
+        debug,
+        &conf.method,
+    );
+    surface
+}
+
+fn render_displacement_frame(conf: RenderConfig, xs: &Vec<ghostweb::Feed>, debug: bool) -> ImageSurface {
+    let surface = ImageSurface::create(
+        Format::ARgb32,
+        conf.width as i32,
+        conf.height as i32
+    ).unwrap();
+    let context = Context::new(&surface).unwrap();
+    draw_frame(
+        &context,
+        xs,
+        conf.width,
+        conf.height,
+        conf.size,
+        debug,
+        &conf.method,
+    );
+    surface
+}
+
+fn draw_frame(
     context: &Context,
     xs: &Vec<ghostweb::Feed>,
     width: u32,
@@ -304,4 +367,12 @@ fn draw(
         }
         context.stroke().unwrap();
     }
+}
+
+fn save_frame(surface: ImageSurface, outdir: &String, filename: &String) {
+    let path = Path::new(outdir).join(format!("{}.png", filename));
+    let mut outfile = File::create(path).expect("Could not open output file");
+    surface
+        .write_to_png(&mut outfile)
+        .expect("Could not write to output file");
 }
