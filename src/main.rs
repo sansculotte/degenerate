@@ -43,6 +43,7 @@ struct RenderConfig {
     height: u32,
     method: Method,
     size: f64,
+    combine_dots: bool,
 }
 
 impl RenderConfig {
@@ -59,6 +60,7 @@ impl RenderConfig {
             height: opt.height,
             method: method,
             size: opt.size,
+            combine_dots: opt.combine_dots,
         }
     }
 }
@@ -108,6 +110,9 @@ struct Opt {
     #[structopt(short, long, default_value = "0")]
     radius: f64,
 
+    #[structopt(long)]
+    combine_dots: bool,
+
     #[structopt(short = "M", long, parse(try_from_str = parse_method), default_value = "dot")]
     method: Method,
 
@@ -117,17 +122,17 @@ struct Opt {
     #[structopt(short, default_value = "0.2")]
     m: f64,
 
-    #[structopt(long, default_value = "")]
-    image: String,
-
     #[structopt(short, long, default_value = "/tmp")]
     outdir: String,
+
+    #[structopt(short = "n", long, default_value = "image")]
+    filename: String,
 
     #[structopt(short, long, default_value = "0")]
     frames: usize,
 
-    #[structopt(short = "n", long, default_value = "image")]
-    filename: String,
+    #[structopt(long, default_value = "")]
+    image: String,
 
     #[structopt(default_value = "")]
     soundfile: String,
@@ -254,7 +259,7 @@ fn image_displacement(radius: f64, opt: Opt) {
                 ghostweb::Feed {
                     p1: ghostweb::Point { x: x, y: y, z: 1. },
                     p2: ghostweb::Point { x: 0., y: 0., z: 0. },
-                    radius: height as f64 / 2. 
+                    radius: height as f64 / 2.
                 }
             );
         }
@@ -293,6 +298,7 @@ fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
         conf.size,
         debug,
         &conf.method,
+        conf.combine_dots,
     );
     surface
 }
@@ -312,6 +318,7 @@ fn render_displacement_frame(conf: RenderConfig, xs: &Vec<ghostweb::Feed>, debug
         conf.size,
         debug,
         &conf.method,
+        conf.combine_dots,
     );
     surface
 }
@@ -324,6 +331,7 @@ fn draw_frame(
     size: f64,
     debug: bool,
     method: &Method,
+    combine_dots: bool,
 ) {
     let cx: f64 = width as f64 / 2.;
     let cy: f64 = height as f64 / 2.;
@@ -341,6 +349,8 @@ fn draw_frame(
         let cry1 = cy + x.p1.y * x.radius;
         let crx2 = cx + x.p2.x * x.radius;
         let cry2 = cy + x.p2.y * x.radius;
+        let crx3 = cx + x.p1.x * x.p2.x * x.radius;
+        let cry3 = cy + x.p1.y * x.p2.y * x.radius;
 
         context.set_line_width(0.1);
         context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
@@ -358,10 +368,15 @@ fn draw_frame(
             ),
             Method::Dot => {
                 context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
-                context.rectangle(crx1, cry1, 0.5, 0.5);
-                context.stroke().unwrap();
-                context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
-                context.rectangle(crx2, cry2, x.p1.z.abs() * size, x.p2.y.abs() * size);
+                if combine_dots {
+                    context.rectangle(crx3, cry3, 0.5, 0.5);
+                }
+                else {
+                    context.rectangle(crx1, cry1, 0.5, 0.5);
+                    context.stroke().unwrap();
+                    context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+                    context.rectangle(crx2, cry2, x.p1.z.abs() * size, x.p2.y.abs() * size);
+                }
             }
             Method::Line => context.line_to(crx2, cry2),
         }
