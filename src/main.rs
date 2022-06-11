@@ -236,16 +236,14 @@ fn image_displacement(radius: f64, opt: Opt) {
 
     let outdir = opt.outdir.clone();
     let path = Path::new(&opt.image);
-
     let image = image::open(path).expect("Could not open image file").into_luma8();
-
+    let mut pb = ProgressBar::new(opt.frames as u64);
+    let ( width, height ) = image.dimensions();
+    let iterations = width * height;
     let block: Vec<i32> = (0..=255)
         .collect::<Vec<_>>()
         .try_into()
         .expect("wrong size iterator");
-
-    let ( width, height ) = image.dimensions();
-    let iterations = width * height;
 
     let mut xs: Vec<ghostweb::Feed> = vec![];
     for (xi, yi, px) in image.enumerate_pixels() {
@@ -271,7 +269,9 @@ fn image_displacement(radius: f64, opt: Opt) {
         let config = RenderConfig::new(iterations, Method::Dot, radius, block.clone(), t, &opt);
         let frame = render_displacement_frame(config, &xs, opt.debug);
         save_frame(frame, &outdir, &filename);
+        pb.inc();
     }
+    pb.finish_print("done!");
 }
 
 fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
@@ -303,16 +303,41 @@ fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
     surface
 }
 
-fn render_displacement_frame(conf: RenderConfig, xs: &Vec<ghostweb::Feed>, debug: bool) -> ImageSurface {
+fn displace(pixels: &Vec<ghostweb::Feed>, dx: &Vec<ghostweb::Feed>, strength: f64) -> Vec<ghostweb::Feed> {
+    pixels.into_iter().zip(dx).map(|(p, x)| { ghostweb::Feed {
+        p1: ghostweb::Point{
+            x: p.p1.x + x.p1.x * strength,
+            y: p.p1.y + x.p1.y * strength,
+            z: p.p1.z + x.p1.z * strength,
+        },
+        p2: ghostweb::Point{
+            x: p.p1.x + x.p2.x * strength,
+            y: p.p1.y + x.p2.y * strength,
+            z: p.p1.z + x.p2.z * strength,
+        },
+        radius: x.radius
+    }}).collect()
+}
+
+fn render_displacement_frame(conf: RenderConfig, pixels: &Vec<ghostweb::Feed>, debug: bool) -> ImageSurface {
     let surface = ImageSurface::create(
         Format::ARgb32,
         conf.width as i32,
         conf.height as i32
     ).unwrap();
     let context = Context::new(&surface).unwrap();
+    let xs = ghostweb(
+        conf.iterations,
+        &conf.block,
+        conf.radius,
+        conf.f1,
+        conf.f2,
+        conf.m,
+        conf.t
+    );
     draw_frame(
         &context,
-        xs,
+        &displace(pixels, &xs, conf.t),
         conf.width,
         conf.height,
         conf.size,
