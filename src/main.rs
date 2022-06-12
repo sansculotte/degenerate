@@ -15,6 +15,7 @@ use std::fs::File;
 use std::path::Path;
 use structopt::StructOpt;
 
+
 const VERSION: &str = "0.0.3";
 
 
@@ -79,7 +80,7 @@ fn parse_method(method: &str) -> Result<Method, String> {
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "degenerate",
-    about = "Generative Images from mathematic primitives",
+    about = "Generative and manipulate Images with arithmetic primitives",
     version = VERSION
 )]
 struct Opt {
@@ -266,8 +267,8 @@ fn image_displacement(radius: f64, opt: Opt) {
     for i in 0..opt.frames {
         let t = i as f64 / opt.frames as f64;
         let filename = format!("{:01$}", i, 6);
-        let config = RenderConfig::new(iterations, Method::Dot, radius, block.clone(), t, &opt);
-        let frame = render_displacement_frame(config, &xs, opt.debug);
+        let config = RenderConfig::new(iterations, Method::Dot, radius, block.clone(), t * opt.t, &opt);
+        let frame = render_displacement_frame(config, &xs, t, opt.debug);
         save_frame(frame, &outdir, &filename);
         pb.inc();
     }
@@ -303,23 +304,34 @@ fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
     surface
 }
 
-fn displace(pixels: &Vec<ghostweb::Feed>, dx: &Vec<ghostweb::Feed>, strength: f64) -> Vec<ghostweb::Feed> {
-    pixels.into_iter().zip(dx).map(|(p, x)| { ghostweb::Feed {
-        p1: ghostweb::Point{
-            x: p.p1.x + x.p1.x * strength,
-            y: p.p1.y + x.p1.y * strength,
-            z: p.p1.z + x.p1.z * strength,
-        },
-        p2: ghostweb::Point{
-            x: p.p1.x + x.p2.x * strength,
-            y: p.p1.y + x.p2.y * strength,
-            z: p.p1.z + x.p2.z * strength,
-        },
-        radius: x.radius
-    }}).collect()
+fn displace(
+    pixels: &Vec<ghostweb::Feed>,
+    dx: &Vec<ghostweb::Feed>,
+    strength: f64
+) -> Vec<ghostweb::Feed> {
+    pixels.into_iter().zip(dx).map(|(p, x)| {
+        ghostweb::Feed {
+            p1: ghostweb::Point {
+                x: p.p1.x * (1.-strength) + x.p1.x * strength,
+                y: p.p1.y * (1.-strength) + x.p1.y * strength,
+                z: p.p1.z * (1.-strength) + x.p1.z * strength,
+            },
+            p2: ghostweb::Point {
+                x: p.p1.x * (1.-strength) + x.p2.x * strength,
+                y: p.p1.y * (1.-strength) + x.p2.y * strength,
+                z: p.p1.z * (1.-strength) + x.p2.z * strength,
+            },
+            radius: p.radius * (1.-strength) + x.radius * strength
+        }
+    }).collect()
 }
 
-fn render_displacement_frame(conf: RenderConfig, pixels: &Vec<ghostweb::Feed>, debug: bool) -> ImageSurface {
+fn render_displacement_frame(
+    conf: RenderConfig,
+    pixels: &Vec<ghostweb::Feed>,
+    t: f64,
+    debug: bool
+) -> ImageSurface {
     let surface = ImageSurface::create(
         Format::ARgb32,
         conf.width as i32,
@@ -337,7 +349,7 @@ fn render_displacement_frame(conf: RenderConfig, pixels: &Vec<ghostweb::Feed>, d
     );
     draw_frame(
         &context,
-        &displace(pixels, &xs, conf.t),
+        &displace(&pixels, &xs, t),
         conf.width,
         conf.height,
         conf.size,
