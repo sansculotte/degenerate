@@ -409,10 +409,12 @@ fn draw_frame(
                     context.rectangle(crx3, cry3, 0.5, 0.5);
                 }
                 else {
-                    context.rectangle(crx1, cry1, 0.5, 0.5);
+                    let size_1 = x.p1.z.abs() * size;
+                    let size_2 = x.p2.z.abs() * size;
+                    context.rectangle(crx1, cry1, size_1, size_1);
                     context.stroke().unwrap();
                     context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
-                    context.rectangle(crx2, cry2, x.p1.z.abs() * size, x.p2.y.abs() * size);
+                    context.rectangle(crx2, cry2, size_2, size_2);
                 }
             }
             Method::Line => context.line_to(crx2, cry2),
