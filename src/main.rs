@@ -130,6 +130,9 @@ struct Opt {
     filename: String,
 
     #[structopt(short, long, default_value = "0")]
+    start: usize,
+
+    #[structopt(short, long, default_value = "0")]
     frames: usize,
 
     #[structopt(long, default_value = "")]
@@ -187,7 +190,7 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
     }
 
     for (i, block) in samples.chunks(blocksize).enumerate() {
-        if i >= frames {
+        if i < opt.start || i >= opt.start + frames {
             continue;
         }
         let t = i as f64 / duration as f64 * opt.t;
