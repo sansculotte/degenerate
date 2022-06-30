@@ -389,8 +389,8 @@ fn draw_frame(
         let cry1 = cy + x.p1.y * x.radius;
         let crx2 = cx + x.p2.x * x.radius;
         let cry2 = cy + x.p2.y * x.radius;
-        let crx3 = cx + x.p1.x * x.p2.x * x.radius;
-        let cry3 = cy + x.p1.y * x.p2.y * x.radius;
+        let crx3 = cx + cx * x.p1.x + x.p2.x * x.radius;
+        let cry3 = cy + cy * x.p1.y + x.p2.y * x.radius;
 
         context.set_line_width(0.1);
         context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
