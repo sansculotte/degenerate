@@ -357,6 +357,14 @@ fn equation_014(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     Point { x: x, y: y, z: z }
 }
 
+// henon map
+fn equation_015(s: &State, _p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let x = (1. + (s.fft_bin.im * s.i.pow(2) as f32) as f64 + (s.fft_bin.re as f64 * p1.y)).tanh();
+    let y = p1.x;
+    let z = if p1.z > p2.z { p1.x * p2.x } else { p1.y * p2.y };
+    Point { x: x, y: y, z: z }
+}
+
 fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Point) -> Point {
     match index {
         1 => equation_001,
@@ -373,6 +381,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         12 => equation_012,
         13 => equation_013,
         14 => equation_014,
+        15 => equation_015,
         _ => equation_000,
     }
 }
