@@ -129,7 +129,7 @@ struct Opt {
     #[structopt(short = "n", long, default_value = "image")]
     filename: String,
 
-    #[structopt(short, long, default_value = "0")]
+    #[structopt(long, default_value = "0")]
     start: usize,
 
     #[structopt(short, long, default_value = "0")]
