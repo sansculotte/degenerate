@@ -357,12 +357,18 @@ fn equation_014(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     Point { x: x, y: y, z: z }
 }
 
-// henon map
-fn equation_015(s: &State, _p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let x = (1. + (s.fft_bin.im * s.i.pow(2) as f32) as f64 + (s.fft_bin.re as f64 * p1.y)).tanh();
-    let y = p1.x;
-    let z = if p1.z > p2.z { p1.x * p2.x } else { p1.y * p2.y };
-    Point { x: x, y: y, z: z }
+// popcorn
+fn equation_015(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let xd = p1.x - p2.x;
+    let yd = p1.y - p2.y;
+    let x = xd + s.c * (3. * p1.y).tan().sin();
+    let y = p1.y - p2.y + s.n * (3. * p1.y).tan().sin();
+    let z = (p2.z - p1.z) + s.c3 * p.t * (x + y).cos();
+    Point {
+        x: if x.abs() <= 1.0 { x } else { s.hbm.get([xd, yd, p1.z]) },
+        y: if y.abs() <= 1.0 { y } else { s.billow.get([p2.x, p2.y, p2.z]) },
+        z: if z.abs() <= 1.0 { z } else { s.sample }
+    }
 }
 
 fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Point) -> Point {
