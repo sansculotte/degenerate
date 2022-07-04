@@ -166,28 +166,42 @@ fn main() {
     }
 }
 
-fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
-
-    // load soundfile
-    let mut reader = hound::WavReader::open(opt.soundfile.clone()).unwrap();
+fn load_soundfile(
+    filename: String,
+    fps: usize,
+    frames: usize,
+    debug: bool
+) -> (usize, usize, u32, Vec<i32>) {
+    let mut reader = hound::WavReader::open(filename).unwrap();
     let spec: hound::WavSpec = reader.spec();
     let duration = reader.duration();
-    let blocksize: usize = (spec.sample_rate as usize / opt.fps) * spec.channels as usize;
+    let blocksize: usize = (spec.sample_rate as usize / fps) * spec.channels as usize;
     let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
-    let frames = if opt.frames > 0 {
-        cmp::min(opt.frames, samples.len() / blocksize)
+    let number_of_frames = if frames > 0 {
+        cmp::min(frames, samples.len() / blocksize)
     } else {
         samples.len() / blocksize
     };
-    let outdir = opt.outdir.clone();
 
-    let mut pb = ProgressBar::new(frames as u64);
-
-    if opt.debug {
+    if debug {
         println!("blocksize: {:?}", blocksize);
-        println!("frames: {:?}", frames);
+        println!("frames: {:?}", number_of_frames);
         println!("samples: {:?}", samples.len());
     }
+
+    (blocksize, number_of_frames, duration, samples)
+}
+
+fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
+
+    let (blocksize, frames, duration, samples) = load_soundfile(
+        opt.soundfile.clone(),
+        opt.fps,
+        opt.frames,
+        opt.debug
+    );
+    let outdir = opt.outdir.clone();
+    let mut pb = ProgressBar::new(frames as u64);
 
     for (i, block) in samples.chunks(blocksize).enumerate() {
         if i < opt.start || i >= opt.start + frames {
