@@ -201,7 +201,7 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
         opt.debug
     );
     let outdir = opt.outdir.clone();
-    let mut pb = ProgressBar::new(frames as u64);
+    let mut pb = ProgressBar::new((frames - opt.start) as u64);
 
     for (i, block) in samples.chunks(blocksize).enumerate() {
         if i < opt.start || i >= opt.start + frames {
