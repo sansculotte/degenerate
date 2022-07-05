@@ -73,12 +73,12 @@ pub fn ghostweb(
     let samples = normalize(block);
 
     let params = Parameter {
-        iterations: iterations,
+        iterations,
         samples: samples.to_owned(),
         fft: fft(samples),
-        radius: radius,
-        m: m,
-        t: t,
+        radius,
+        m,
+        t,
         rms: rms(block),
     };
     let mut state = State {
@@ -162,14 +162,14 @@ fn equation_000(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     let x: f64 = s.c.sin();
     let y: f64 = s.c.cos();
     let z: f64 = s.sample;
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_001(s: &State, p: &Parameter, _p1: &Point, p2: &Point) -> Point {
     let x: f64 = (p.t * PHI * PI).cos() + s.c.sin();
     let y: f64 = (p.t * PHI * PI).sin() + (x.powf(3.) + 0.5 * x + 0.3333).sqrt();
     let z: f64 = p2.z;
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_002(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
@@ -177,7 +177,7 @@ fn equation_002(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
     let x: f64 = s.c.cos() * r;
     let y: f64 = s.c.sin() * r;
     let z: f64 = ((x + y) * PI).tanh();
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_003(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
@@ -185,21 +185,21 @@ fn equation_003(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
         (p.t + s.c * p2.z).sin() * (s.c2 * p.t.powf(s.c3)).cos() * s.hbm.get([p2.x, p2.y, p2.z]);
     let y: f64 = (p.t * E + s.c).sin() * (p.rms - p.t.powf(s.sample)).sin();
     let z: f64 = s.sample * s.osx.get([p1.x, p1.y, p.t]);
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_004(s: &State, p: &Parameter, p1: &Point, _p2: &Point) -> Point {
     let x = ((s.c2 + p.t) + p1.z + s.n + p.rms).sin();
     let y = (s.c3 + p.t).cos() * s.billow.get([p1.x, p1.y, p.t * 2000.]);
     let z = (s.sample * p.rms + p.t).sin() * s.c;
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_005(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let x = (s.c3 * s.r * s.n).sin() + (s.c * p.t - s.c2).cos() - (p2.z + E).ln().sin();
     let y = s.c3.cos() * (s.n * p1.z + p.rms).cos() + (p.t - (s.sample as f64).powf(E)).sin();
     let z = s.hbm.get([p1.x, p1.y, s.sample as f64]) + s.billow.get([p2.x, p2.y, p2.z]) * s.sample;
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_006(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
@@ -220,7 +220,7 @@ fn equation_006(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     if z.is_nan() {
         z = s.osx.get([p.t, p1.y, p1.z])
     };
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_007(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
@@ -237,14 +237,14 @@ fn equation_007(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     if z.is_nan() {
         z = s.hbm.get([p1.x, p1.y, p.t])
     };
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_008(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let x = p1.x * s.sample + s.fft_bin.re as f64 + s.c2.sin() - p1.z * p.rms;
     let y = p2.y * (s.sample + 0.5) + s.fft_bin.im as f64 - s.c3.cos() * (s.c * s.n).sin();
     let z = (x * s.c2 + p.t * 8. * PI).sin() * (y * s.c * s.n).cos();
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_009(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
@@ -266,7 +266,7 @@ fn equation_009(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     if z.is_nan() {
         z = s.hbm.get([p.t, p1.y, p1.z])
     };
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 // totenschiff
@@ -302,7 +302,7 @@ fn equation_010(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     if !z.is_finite() {
         z = s.hbm.get([p1.x, p1.y, p.t])
     };
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_011(s: &State, p: &Parameter, _p1: &Point, p2: &Point) -> Point {
@@ -313,7 +313,7 @@ fn equation_011(s: &State, p: &Parameter, _p1: &Point, p2: &Point) -> Point {
         + s.c.powf(2.).sin() * ((s.fft_bin.im * s.index.pow(2) as f32) as f64).sin())
     .fract();
     let z = x * s.fft_bin.re as f64 + y * s.fft_bin.im as f64;
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_012(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
@@ -322,7 +322,7 @@ fn equation_012(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
         * (x * PI + p1.z * E + p2.z * SQRT_2).sin()
         - s.fft_bin.im as f64;
     let z = s.osx.get([s.sample, p.t, x]);
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_013(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
@@ -346,7 +346,7 @@ fn equation_013(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     if z.is_nan() {
         z = s.osx.get([p.t, p2.y, p2.z])
     };
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 fn equation_014(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
@@ -354,7 +354,7 @@ fn equation_014(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
         s.c3.sin() + (s.c * PHI * s.osx.get([p.t, s.fft_bin.im as f64, s.fft_bin.re as f64])).cos();
     let y = s.c3.cos() + (s.c2 * s.hbm.get([p.t, s.fft_bin.im as f64, s.fft_bin.re as f64])).sin();
     let z = s.billow.get([p.t, x, y]);
-    Point { x: x, y: y, z: z }
+    Point { x, y, z }
 }
 
 // popcorn

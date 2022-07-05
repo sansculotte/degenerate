@@ -126,7 +126,7 @@ struct Opt {
     #[structopt(short, long, default_value = "/tmp")]
     outdir: String,
 
-    #[structopt(short = "n", long, default_value = "image")]
+    #[structopt(short = "n", long, default_value = "frame_")]
     filename: String,
 
     #[structopt(long, default_value = "0")]
@@ -159,8 +159,6 @@ fn main() {
 
     if !opt.image.is_empty()  {
         image_displacement(radius, opt)
-    } else if opt.soundfile.is_empty() {
-        single_frame(iterations, radius, opt)
     } else {
         multi_frame(iterations, radius, opt)
     }
@@ -171,10 +169,10 @@ fn load_soundfile(
     fps: usize,
     frames: usize,
     debug: bool
-) -> (usize, usize, u32, Vec<i32>) {
+) -> (usize, usize, f64, Vec<i32>) {
     let mut reader = hound::WavReader::open(filename).unwrap();
     let spec: hound::WavSpec = reader.spec();
-    let duration = reader.duration();
+    let duration = reader.duration() as f64;
     let blocksize: usize = (spec.sample_rate as usize / fps) * spec.channels as usize;
     let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
     let number_of_frames = if frames > 0 {
@@ -193,13 +191,31 @@ fn load_soundfile(
 }
 
 fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
+    let frames: usize;
+    let duration: f64;
+    let blocksize: usize;
+    let samples: Vec<i32>;
+    if !opt.soundfile.is_empty() {
+        // unfortunatel the compiler doesn't like destructuring assignment
+        let result = load_soundfile(
+            opt.soundfile.clone(),
+            opt.fps,
+            opt.frames,
+            opt.debug
+        );
+        blocksize = result.0; 
+        frames = result.1;
+        duration = result.2;
+        samples = result.3;
+    }
+    else {
+        blocksize = 255;
+        frames = opt.frames;
+        duration = frames as f64 / opt.fps as f64;
+        samples = ramp(blocksize);
+    }
 
-    let (blocksize, frames, duration, samples) = load_soundfile(
-        opt.soundfile.clone(),
-        opt.fps,
-        opt.frames,
-        opt.debug
-    );
+    let basename = opt.filename.clone();
     let outdir = opt.outdir.clone();
     let mut pb = ProgressBar::new((frames - opt.start) as u64);
 
@@ -208,17 +224,16 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
             continue;
         }
         let t = i as f64 / duration as f64 * opt.t;
-        let filename = format!("{:01$}", i, 6);
-        let config = RenderConfig::new(
-            iterations,
-            opt.method.clone(),
-            radius,
-            block.try_into().expect("fuck"),
-            t,
-            &opt
-        );
+        let filename = format!("{}{}", basename, format!("{:01$}", i, 6));
         save_frame(
-            render_frame(config, opt.debug),
+            single_frame(
+                iterations,
+                radius,
+                t,
+                opt.method.clone(),
+                block.try_into().expect("fuck"),
+                &opt
+            ),
             &outdir,
             &filename
         );
@@ -227,27 +242,30 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
     pb.finish_print("done!");
 }
 
-fn single_frame(iterations: u32, radius: f64, opt: Opt) {
-
-    // ramp up
-    let block: Vec<i32> = (0..=255)
+fn ramp(size: usize) -> Vec<i32> {
+    (0..=size as i32)
         .collect::<Vec<_>>()
         .try_into()
-        .expect("wrong size iterator");
+        .expect("wrong size iterator")
+}
 
+fn single_frame(
+    iterations: u32,
+    radius: f64,
+    t: f64,
+    method: Method,
+    block: Vec<i32>,
+    opt: &Opt
+) -> ImageSurface {
     let config = RenderConfig::new(
         iterations,
-        opt.method.clone(),
+        method,
         radius,
         block,
-        opt.t,
-        &opt
+        t,
+        opt
     );
-    save_frame(
-        render_frame(config, opt.debug),
-        &opt.outdir,
-        &opt.filename
-    );
+    render_frame(config, opt.debug)
 }
 
 fn image_displacement(radius: f64, opt: Opt) {
@@ -273,7 +291,7 @@ fn image_displacement(radius: f64, opt: Opt) {
         if px[0] > 128 {
             xs.push(
                 ghostweb::Feed {
-                    p1: ghostweb::Point { x: x, y: y, z: 1. },
+                    p1: ghostweb::Point { x, y, z: 1. },
                     p2: ghostweb::Point { x: 0., y: 0., z: 0. },
                     radius: height as f64 / 2.
                 }
