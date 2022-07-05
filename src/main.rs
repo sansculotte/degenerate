@@ -195,15 +195,16 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
     let duration: f64;
     let blocksize: usize;
     let samples: Vec<i32>;
-    let mut iterator;
+    let mut block_iterator;
+
     if opt.soundfile.is_empty() {
         blocksize = 255;
         frames = if opt.frames > 0 { opt.frames } else { 1 };
         duration = frames as f64 / opt.fps as f64;
         samples = ramp(blocksize * frames);
-        iterator = samples.chunks(blocksize).skip(opt.start);
+        block_iterator = samples.chunks(blocksize).skip(opt.start);
     } else {
-        // unfortunatel the compiler doesn't like destructuring assignment
+        // the compiler doesn't like destructuring assignment
         let result = load_soundfile(
             opt.soundfile.clone(),
             opt.fps,
@@ -214,7 +215,7 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
         frames = result.1;
         duration = result.2;
         samples = result.3;
-        iterator = samples.chunks(blocksize).skip(opt.start);
+        block_iterator = samples.chunks(blocksize).skip(opt.start);
     }
 
     let basename = opt.filename.clone();
@@ -227,7 +228,7 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
         let t = i as f64 / duration as f64 * opt.t;
         let filename = format!("{}{}", basename, format!("{:01$}", i, 6));
 
-        block = iterator
+        block = block_iterator
             .next()
             .unwrap()
             .try_into()
@@ -284,11 +285,7 @@ fn image_displacement(radius: f64, opt: Opt) {
     let mut pb = ProgressBar::new(opt.frames as u64);
     let ( width, height ) = image.dimensions();
     let iterations = width * height;
-    let block: Vec<i32> = (0..=255)
-        .collect::<Vec<_>>()
-        .try_into()
-        .expect("wrong size iterator");
-
+    let block = ramp(255);
     let mut xs: Vec<ghostweb::Feed> = vec![];
     for (xi, yi, px) in image.enumerate_pixels() {
         let x: f64 = (xi as f64 - width as f64 / 2.) / width as f64;
