@@ -158,9 +158,9 @@ fn advance(i: u32, mut state: State, p: &Parameter) -> State {
     state
 }
 
-fn equation_000(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
-    let x: f64 = s.c.sin();
-    let y: f64 = s.c.cos();
+fn equation_000(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
+    let x: f64 = p.t + s.c.sin();
+    let y: f64 = p.t + s.c.cos();
     let z: f64 = s.sample;
     Point { x, y, z }
 }
@@ -168,7 +168,7 @@ fn equation_000(s: &State, _p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
 fn equation_001(s: &State, p: &Parameter, _p1: &Point, p2: &Point) -> Point {
     let x: f64 = (p.t * PHI * PI).cos() + s.c.sin();
     let y: f64 = (p.t * PHI * PI).sin() + (x.powf(3.) + 0.5 * x + 0.3333).sqrt();
-    let z: f64 = p2.z;
+    let z: f64 = if p2.z > 0. { p2.z } else { 1. };
     Point { x, y, z }
 }
 

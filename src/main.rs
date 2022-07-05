@@ -195,7 +195,14 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
     let duration: f64;
     let blocksize: usize;
     let samples: Vec<i32>;
-    if !opt.soundfile.is_empty() {
+    let mut iterator;
+    if opt.soundfile.is_empty() {
+        blocksize = 255;
+        frames = if opt.frames > 0 { opt.frames } else { 1 };
+        duration = frames as f64 / opt.fps as f64;
+        samples = ramp(blocksize * frames);
+        iterator = samples.chunks(blocksize).skip(opt.start);
+    } else {
         // unfortunatel the compiler doesn't like destructuring assignment
         let result = load_soundfile(
             opt.soundfile.clone(),
@@ -207,31 +214,32 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
         frames = result.1;
         duration = result.2;
         samples = result.3;
-    }
-    else {
-        blocksize = 255;
-        frames = opt.frames;
-        duration = frames as f64 / opt.fps as f64;
-        samples = ramp(blocksize);
+        iterator = samples.chunks(blocksize).skip(opt.start);
     }
 
     let basename = opt.filename.clone();
     let outdir = opt.outdir.clone();
     let mut pb = ProgressBar::new((frames - opt.start) as u64);
 
-    for (i, block) in samples.chunks(blocksize).enumerate() {
-        if i < opt.start || i >= opt.start + frames {
-            continue;
-        }
+    for i in opt.start..opt.start + frames {
+
+        let block: Vec<i32>;
         let t = i as f64 / duration as f64 * opt.t;
         let filename = format!("{}{}", basename, format!("{:01$}", i, 6));
+
+        block = iterator
+            .next()
+            .unwrap()
+            .try_into()
+            .expect("could not unwrap soundfile sample block");
+
         save_frame(
             single_frame(
                 iterations,
                 radius,
                 t,
                 opt.method.clone(),
-                block.try_into().expect("fuck"),
+                block,
                 &opt
             ),
             &outdir,
