@@ -12,7 +12,7 @@ pub struct Point {
     pub z: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Feed {
     pub p1: Point,
     pub p2: Point,

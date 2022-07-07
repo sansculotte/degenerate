@@ -59,7 +59,7 @@ impl RenderConfig {
             block,
             width: opt.width,
             height: opt.height,
-            method: method,
+            method,
             size: opt.size,
             combine_dots: opt.combine_dots,
         }
@@ -145,23 +145,13 @@ struct Opt {
 fn main() {
     let opt = Opt::from_args();
 
-    let iterations = if opt.iterations > 0 {
-        opt.iterations
-    } else {
-        opt.width * opt.height
-    };
-
     let radius = if opt.radius > 0. {
         opt.radius
     } else {
         (opt.width / 2) as f64
     };
 
-    if !opt.image.is_empty()  {
-        image_displacement(radius, opt)
-    } else {
-        multi_frame(iterations, radius, opt)
-    }
+    multi_frame(radius, opt)
 }
 
 fn load_soundfile(
@@ -190,19 +180,61 @@ fn load_soundfile(
     (blocksize, number_of_frames, duration, samples)
 }
 
-fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
+fn load_image(image_file_path: &String, debug: bool) -> Option<(u32, Vec<ghostweb::Feed>)> {
+    let path = Path::new(image_file_path);
+    if !path.exists() {
+        ()
+    }
+    let image = image::open(path).expect("Could not open image file").into_luma8();
+    let ( width, height ) = image.dimensions();
+    let iterations = width * height;
+    let mut xs: Vec<ghostweb::Feed> = vec![];
+
+    for (xi, yi, px) in image.enumerate_pixels() {
+        let x: f64 = (xi as f64 - width as f64 / 2.) / width as f64;
+        let y: f64 = (yi as f64 - height as f64 / 2.) / height as f64;
+        if debug {
+            println!("{} {} {}", x, y, px[0]);
+        }
+        if px[0] > 128 {
+            xs.push(
+                ghostweb::Feed {
+                    p1: ghostweb::Point { x, y, z: 1. },
+                    p2: ghostweb::Point { x: 1., y: 1., z: 1. },
+                    radius: height as f64 / 2.
+                }
+            );
+        }
+    }
+
+    Some((iterations, xs))
+}
+
+fn multi_frame(radius: f64, opt: Opt) {
     let frames: usize;
     let duration: f64;
     let blocksize: usize;
     let samples: Vec<i32>;
-    let mut block_iterator;
+    let image = load_image(&opt.image, opt.debug);
+    let (is, xs): (u32, Vec<ghostweb::Feed>) = match image {
+        None => (0, vec!()),
+        Some((is, xs)) => (is, xs)
+    };
+
+    let iterations = if opt.iterations > 0 {
+        opt.iterations
+    } else {
+        match is {
+            0 => opt.width * opt.height,
+            _ => is
+        }
+    };
 
     if opt.soundfile.is_empty() {
         blocksize = 255;
         frames = if opt.frames > 0 { opt.frames } else { 1 };
         duration = frames as f64 / opt.fps as f64;
         samples = ramp(blocksize * frames);
-        block_iterator = samples.chunks(blocksize).skip(opt.start);
     } else {
         // the compiler doesn't like destructuring assignment
         let result = load_soundfile(
@@ -215,14 +247,15 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
         frames = result.1;
         duration = result.2;
         samples = result.3;
-        block_iterator = samples.chunks(blocksize).skip(opt.start);
     }
+    let mut block_iterator = samples.chunks(blocksize).skip(opt.start);
 
     let basename = opt.filename.clone();
     let outdir = opt.outdir.clone();
     let mut pb = ProgressBar::new((frames - opt.start) as u64);
+    let end = opt.start + frames;
 
-    for i in opt.start..opt.start + frames {
+    for i in opt.start..end {
 
         let block: Vec<i32>;
         let t = i as f64 / duration as f64 * opt.t;
@@ -234,15 +267,17 @@ fn multi_frame(iterations: u32, radius: f64, opt: Opt) {
             .try_into()
             .expect("could not unwrap soundfile sample block");
 
+        let config = RenderConfig::new(iterations, opt.method.clone(), radius, block, t, &opt);
+        let frame = match xs[..] {
+            [] => {
+                render_frame(config, opt.debug)
+            },
+            _ => {
+                render_displacement_frame(config, &xs, i as f64 / frames as f64, opt.debug)
+            }
+        };
         save_frame(
-            single_frame(
-                iterations,
-                radius,
-                t,
-                opt.method.clone(),
-                block,
-                &opt
-            ),
+            frame,
             &outdir,
             &filename
         );
@@ -256,63 +291,6 @@ fn ramp(size: usize) -> Vec<i32> {
         .collect::<Vec<_>>()
         .try_into()
         .expect("wrong size iterator")
-}
-
-fn single_frame(
-    iterations: u32,
-    radius: f64,
-    t: f64,
-    method: Method,
-    block: Vec<i32>,
-    opt: &Opt
-) -> ImageSurface {
-    let config = RenderConfig::new(
-        iterations,
-        method,
-        radius,
-        block,
-        t,
-        opt
-    );
-    render_frame(config, opt.debug)
-}
-
-fn image_displacement(radius: f64, opt: Opt) {
-
-    let outdir = opt.outdir.clone();
-    let path = Path::new(&opt.image);
-    let image = image::open(path).expect("Could not open image file").into_luma8();
-    let mut pb = ProgressBar::new(opt.frames as u64);
-    let ( width, height ) = image.dimensions();
-    let iterations = width * height;
-    let block = ramp(255);
-    let mut xs: Vec<ghostweb::Feed> = vec![];
-    for (xi, yi, px) in image.enumerate_pixels() {
-        let x: f64 = (xi as f64 - width as f64 / 2.) / width as f64;
-        let y: f64 = (yi as f64 - height as f64 / 2.) / height as f64;
-        if opt.debug {
-            println!("{} {} {}", x, y, px[0]);
-        }
-        if px[0] > 128 {
-            xs.push(
-                ghostweb::Feed {
-                    p1: ghostweb::Point { x, y, z: 1. },
-                    p2: ghostweb::Point { x: 0., y: 0., z: 0. },
-                    radius: height as f64 / 2.
-                }
-            );
-        }
-    }
-
-    for i in 0..opt.frames {
-        let t = i as f64 / opt.frames as f64;
-        let filename = format!("{:01$}", i, 6);
-        let config = RenderConfig::new(iterations, Method::Dot, radius, block.clone(), t * opt.t, &opt);
-        let frame = render_displacement_frame(config, &xs, t, opt.debug);
-        save_frame(frame, &outdir, &filename);
-        pb.inc();
-    }
-    pb.finish_print("done!");
 }
 
 fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
@@ -369,7 +347,7 @@ fn displace(
 fn render_displacement_frame(
     conf: RenderConfig,
     pixels: &Vec<ghostweb::Feed>,
-    t: f64,
+    strength: f64,
     debug: bool
 ) -> ImageSurface {
     let surface = ImageSurface::create(
@@ -389,7 +367,7 @@ fn render_displacement_frame(
     );
     draw_frame(
         &context,
-        &displace(&pixels, &xs, t),
+        &displace(&pixels, &xs, strength),
         conf.width,
         conf.height,
         conf.size,
