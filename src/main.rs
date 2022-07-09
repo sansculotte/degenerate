@@ -117,7 +117,7 @@ struct Opt {
     #[structopt(short = "M", long, parse(try_from_str = parse_method), default_value = "dot")]
     method: Method,
 
-    #[structopt(short, long, default_value = "0.5")]
+    #[structopt(short, long, default_value = "0")]
     size: f64,
 
     #[structopt(short, default_value = "0.2")]
@@ -427,8 +427,8 @@ fn draw_frame(
                     context.rectangle(crx3, cry3, 0.5, 0.5);
                 }
                 else {
-                    let size_1 = x.p1.z.abs() * size;
-                    let size_2 = x.p2.z.abs() * size;
+                    let size_1 = if size > 0. { x.p1.z.abs() * size } else { 0.5 };
+                    let size_2 = if size > 0. { x.p2.z.abs() * size } else { 0.5 };
                     context.rectangle(crx1, cry1, size_1, size_1);
                     context.stroke().unwrap();
                     context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
