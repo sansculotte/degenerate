@@ -16,7 +16,7 @@ use std::path::Path;
 use structopt::StructOpt;
 
 
-const VERSION: &str = "0.0.3";
+const VERSION: &str = "0.1.0";
 
 
 macro_rules! validate {
