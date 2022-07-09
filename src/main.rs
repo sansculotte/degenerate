@@ -19,6 +19,14 @@ use structopt::StructOpt;
 const VERSION: &str = "0.0.3";
 
 
+macro_rules! validate {
+    ($e:expr, $msg:expr) => {
+        if !$e {
+            return Err(Error::BadRequest($msg.into()));
+        }
+    };
+}
+
 #[derive(Debug, Clone)]
 enum Method {
     Arc,
