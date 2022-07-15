@@ -191,8 +191,10 @@ fn load_soundfile(
 fn load_image(image_file_path: &String, debug: bool) -> Option<(u32, Vec<ghostweb::Feed>)> {
     let path = Path::new(image_file_path);
     if !path.exists() {
-        ()
+        println!("image file not found");
+        return None
     }
+
     let image = image::open(path).expect("Could not open image file").into_luma8();
     let ( width, height ) = image.dimensions();
     let iterations = width * height;
@@ -223,7 +225,11 @@ fn multi_frame(radius: f64, opt: Opt) {
     let duration: f64;
     let blocksize: usize;
     let samples: Vec<i32>;
-    let image = load_image(&opt.image, opt.debug);
+    let image = if opt.image != "" {
+        load_image(&opt.image, opt.debug)
+    } else {
+        None
+    };
     let (is, xs): (u32, Vec<ghostweb::Feed>) = match image {
         None => (0, vec!()),
         Some((is, xs)) => (is, xs)
