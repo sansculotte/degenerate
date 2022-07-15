@@ -225,10 +225,10 @@ fn multi_frame(radius: f64, opt: Opt) {
     let duration: f64;
     let blocksize: usize;
     let samples: Vec<i32>;
-    let image = if opt.image != "" {
-        load_image(&opt.image, opt.debug)
-    } else {
+    let image = if opt.image.is_empty() {
         None
+    } else {
+        load_image(&opt.image, opt.debug)
     };
     let (is, xs): (u32, Vec<ghostweb::Feed>) = match image {
         None => (0, vec!()),
