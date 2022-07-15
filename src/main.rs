@@ -266,7 +266,7 @@ fn multi_frame(radius: f64, opt: Opt) {
 
     let basename = opt.filename.clone();
     let outdir = opt.outdir.clone();
-    let mut pb = ProgressBar::new((frames - opt.start) as u64);
+    let mut pb = ProgressBar::new(frames as u64);
     let end = opt.start + frames;
 
     for i in opt.start..end {
