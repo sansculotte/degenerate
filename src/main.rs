@@ -188,24 +188,13 @@ fn load_soundfile(
     (blocksize, number_of_frames, duration, samples)
 }
 
-fn load_image(image_file_path: &String, debug: bool) -> Option<(u32, Vec<ghostweb::Feed>)> {
-    let path = Path::new(image_file_path);
-    if !path.exists() {
-        println!("image file not found");
-        return None
-    }
-
-    let image = image::open(path).expect("Could not open image file").into_luma8();
+fn image_to_points(image: image::GrayImage) -> Vec<ghostweb::Feed> {
     let ( width, height ) = image.dimensions();
-    let iterations = width * height;
     let mut xs: Vec<ghostweb::Feed> = vec![];
 
     for (xi, yi, px) in image.enumerate_pixels() {
         let x: f64 = (xi as f64 - width as f64 / 2.) / width as f64;
         let y: f64 = (yi as f64 - height as f64 / 2.) / height as f64;
-        if debug {
-            println!("{} {} {}", x, y, px[0]);
-        }
         if px[0] > 128 {
             xs.push(
                 ghostweb::Feed {
@@ -216,7 +205,20 @@ fn load_image(image_file_path: &String, debug: bool) -> Option<(u32, Vec<ghostwe
             );
         }
     }
+    xs
+}
 
+fn load_image(image_file_path: &String, debug: bool) -> Option<(u32, Vec<ghostweb::Feed>)> {
+    let path = Path::new(image_file_path);
+    if !path.exists() {
+        println!("image file not found");
+        return None
+    }
+
+    let image = image::open(path).expect("Could not open image file").into_luma8();
+    let ( width, height ) = image.dimensions();
+    let xs = image_to_points(image);
+    let iterations = width * height;
     Some((iterations, xs))
 }
 
