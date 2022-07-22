@@ -125,6 +125,9 @@ struct Opt {
     #[structopt(short = "M", long, parse(try_from_str = parse_method), default_value = "dot")]
     method: Method,
 
+    #[structopt(long, default_value = "1")]
+    scale_image: f64,
+
     #[structopt(short, long, default_value = "0")]
     size: f64,
 
@@ -188,19 +191,23 @@ fn load_soundfile(
     (blocksize, number_of_frames, duration, samples)
 }
 
-fn image_to_points(image: image::GrayImage) -> Vec<ghostweb::Feed> {
+fn image_to_points(image: image::GrayImage, scale: f64) -> Vec<ghostweb::Feed> {
     let ( width, height ) = image.dimensions();
+    let half_image_width = width / 2;
+    let half_image_height = height / 2;
+    let rel = width as f64 / height as f64;
+
     let mut xs: Vec<ghostweb::Feed> = vec![];
 
     for (xi, yi, px) in image.enumerate_pixels() {
-        let x: f64 = (xi as f64 - width as f64 / 2.) / width as f64;
-        let y: f64 = (yi as f64 - height as f64 / 2.) / height as f64;
+        let x: f64 = (xi as f64 / width as f64) * 2. - 1.;
+        let y: f64 = ((yi as f64 / height as f64) * 2. - 1.) / rel;
         if px[0] > 128 {
             xs.push(
                 ghostweb::Feed {
                     p1: ghostweb::Point { x, y, z: 1. },
-                    p2: ghostweb::Point { x: 1., y: 1., z: 1. },
-                    radius: height as f64 / 2.
+                    p2: ghostweb::Point { x: 0., y: 0., z: 1. },
+                    radius: cmp::max(half_image_width, half_image_height) as f64 * scale
                 }
             );
         }
@@ -208,7 +215,7 @@ fn image_to_points(image: image::GrayImage) -> Vec<ghostweb::Feed> {
     xs
 }
 
-fn load_image(image_file_path: &String, debug: bool) -> Option<(u32, Vec<ghostweb::Feed>)> {
+fn load_image(image_file_path: &String, scale: f64) -> Option<(u32, Vec<ghostweb::Feed>)> {
     let path = Path::new(image_file_path);
     if !path.exists() {
         println!("image file not found");
@@ -217,7 +224,7 @@ fn load_image(image_file_path: &String, debug: bool) -> Option<(u32, Vec<ghostwe
 
     let image = image::open(path).expect("Could not open image file").into_luma8();
     let ( width, height ) = image.dimensions();
-    let xs = image_to_points(image);
+    let xs = image_to_points(image, scale);
     let iterations = width * height;
     Some((iterations, xs))
 }
@@ -230,7 +237,7 @@ fn multi_frame(radius: f64, opt: Opt) {
     let image = if opt.image.is_empty() {
         None
     } else {
-        load_image(&opt.image, opt.debug)
+        load_image(&opt.image, opt.scale_image)
     };
     let (is, xs): (u32, Vec<ghostweb::Feed>) = match image {
         None => (0, vec!()),
