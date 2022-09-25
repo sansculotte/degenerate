@@ -3,17 +3,17 @@ extern crate hound;
 extern crate structopt;
 extern crate image;
 
+mod feed;
 mod ghostweb;
 mod lib;
 
 use cairo::{Context, Format, ImageSurface};
 use ghostweb::ghostweb;
+use ghostweb::load_image;
 use pbr::ProgressBar;
-use std::cmp;
 use std::convert::TryInto;
-use std::fs::File;
-use std::path::Path;
 use structopt::StructOpt;
+use lib::{load_soundfile, ramp, save_frame};
 
 
 const VERSION: &str = "0.1.0";
@@ -165,70 +165,6 @@ fn main() {
     multi_frame(radius, opt)
 }
 
-fn load_soundfile(
-    filename: String,
-    fps: usize,
-    frames: usize,
-    debug: bool
-) -> (usize, usize, f64, Vec<i32>) {
-    let mut reader = hound::WavReader::open(filename).unwrap();
-    let spec: hound::WavSpec = reader.spec();
-    let duration = reader.duration() as f64;
-    let blocksize: usize = (spec.sample_rate as usize / fps) * spec.channels as usize;
-    let samples: Vec<i32> = reader.samples().map(|s| s.unwrap()).collect();
-    let number_of_frames = if frames > 0 {
-        cmp::min(frames, samples.len() / blocksize)
-    } else {
-        samples.len() / blocksize
-    };
-
-    if debug {
-        println!("blocksize: {:?}", blocksize);
-        println!("frames: {:?}", number_of_frames);
-        println!("samples: {:?}", samples.len());
-    }
-
-    (blocksize, number_of_frames, duration, samples)
-}
-
-fn image_to_points(image: image::GrayImage, scale: f64) -> Vec<ghostweb::Feed> {
-    let ( width, height ) = image.dimensions();
-    let half_image_width = width / 2;
-    let half_image_height = height / 2;
-    let rel = width as f64 / height as f64;
-
-    let mut xs: Vec<ghostweb::Feed> = vec![];
-
-    for (xi, yi, px) in image.enumerate_pixels() {
-        let x: f64 = (xi as f64 / width as f64) * 2. - 1.;
-        let y: f64 = ((yi as f64 / height as f64) * 2. - 1.) / rel;
-        if px[0] > 128 {
-            xs.push(
-                ghostweb::Feed {
-                    p1: ghostweb::Point { x, y, z: 1. },
-                    p2: ghostweb::Point { x: 0., y: 0., z: 1. },
-                    radius: cmp::max(half_image_width, half_image_height) as f64 * scale
-                }
-            );
-        }
-    }
-    xs
-}
-
-fn load_image(image_file_path: &String, scale: f64) -> Option<(u32, Vec<ghostweb::Feed>)> {
-    let path = Path::new(image_file_path);
-    if !path.exists() {
-        println!("image file not found");
-        return None
-    }
-
-    let image = image::open(path).expect("Could not open image file").into_luma8();
-    let ( width, height ) = image.dimensions();
-    let xs = image_to_points(image, scale);
-    let iterations = width * height;
-    Some((iterations, xs))
-}
-
 fn multi_frame(radius: f64, opt: Opt) {
     let frames: usize;
     let duration: f64;
@@ -307,13 +243,6 @@ fn multi_frame(radius: f64, opt: Opt) {
         pb.inc();
     }
     pb.finish_print("done!");
-}
-
-fn ramp(size: usize) -> Vec<i32> {
-    (0..=size as i32)
-        .collect::<Vec<_>>()
-        .try_into()
-        .expect("wrong size iterator")
 }
 
 fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
@@ -462,12 +391,4 @@ fn draw_frame(
         }
         context.stroke().unwrap();
     }
-}
-
-fn save_frame(surface: ImageSurface, outdir: &String, filename: &String) {
-    let path = Path::new(outdir).join(format!("{}.png", filename));
-    let mut outfile = File::create(path).expect("Could not open output file");
-    surface
-        .write_to_png(&mut outfile)
-        .expect("Could not write to output file");
 }

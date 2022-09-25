@@ -2,22 +2,11 @@ use crate::lib::{fft, normalize, rms};
 use noise::{Billow, HybridMulti, NoiseFn, OpenSimplex};
 use rustfft::num_complex::Complex;
 use std::f64::consts::{E, PI, SQRT_2};
+pub use crate::feed::{Feed, Point};
+use std::cmp;
+use std::path::Path;
 
 const PHI: f64 = 1.618033988749;
-
-#[derive(Debug, Clone)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-#[derive(Debug, Clone)]
-pub struct Feed {
-    pub p1: Point,
-    pub p2: Point,
-    pub radius: f64,
-}
 
 #[derive(Debug, Clone)]
 struct State {
@@ -361,8 +350,8 @@ fn equation_014(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
 fn equation_015(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let xd = p1.x - p2.x;
     let yd = p1.y - p2.y;
-    let x = xd + s.c * (3. * p1.y).tan().sin();
-    let y = p1.y - p2.y + s.n * (3. * p1.y).tan().sin();
+    let x = xd + s.c * (3. as f64 * p1.y).tan().sin();
+    let y = p1.y - p2.y + s.n * (3. as f64 * p1.y).tan().sin();
     let z = (p2.z - p1.z) + s.c3 * p.t * (x + y).cos();
     Point {
         x: if x.abs() <= 1.0 { x } else { s.hbm.get([xd, yd, p1.z]) },
@@ -390,4 +379,42 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         15 => equation_015,
         _ => equation_000,
     }
+}
+
+pub fn image_to_points(image: image::GrayImage, scale: f64) -> Vec<Feed> {
+    let ( width, height ) = image.dimensions();
+    let half_image_width = width / 2;
+    let half_image_height = height / 2;
+    let rel = width as f64 / height as f64;
+
+    let mut xs: Vec<Feed> = vec![];
+
+    for (xi, yi, px) in image.enumerate_pixels() {
+        let x: f64 = (xi as f64 / width as f64) * 2. - 1.;
+        let y: f64 = ((yi as f64 / height as f64) * 2. - 1.) / rel;
+        if px[0] > 128 {
+            xs.push(
+                Feed {
+                    p1: Point { x, y, z: 1. },
+                    p2: Point { x: 0., y: 0., z: 1. },
+                    radius: cmp::max(half_image_width, half_image_height) as f64 * scale
+                }
+            );
+        }
+    }
+    xs
+}
+
+pub fn load_image(image_file_path: &String, scale: f64) -> Option<(u32, Vec<Feed>)> {
+    let path = Path::new(image_file_path);
+    if !path.exists() {
+        println!("image file not found");
+        return None
+    }
+
+    let image = image::open(path).expect("Could not open image file").into_luma8();
+    let ( width, height ) = image.dimensions();
+    let xs = image_to_points(image, scale);
+    let iterations = width * height;
+    Some((iterations, xs))
 }
