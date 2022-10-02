@@ -53,6 +53,7 @@ struct RenderConfig {
     method: Method,
     size: f64,
     combine_dots: bool,
+    expansion: f64,
 }
 
 impl RenderConfig {
@@ -70,6 +71,7 @@ impl RenderConfig {
             method,
             size: opt.size,
             combine_dots: opt.combine_dots,
+            expansion: opt.expansion,
         }
     }
 }
@@ -118,6 +120,9 @@ struct Opt {
 
     #[structopt(short, long, default_value = "0")]
     radius: f64,
+
+    #[structopt(short, long, default_value = "1.0")]
+    expansion: f64,
 
     #[structopt(long)]
     combine_dots: bool,
@@ -170,6 +175,7 @@ fn multi_frame(radius: f64, opt: Opt) {
     let duration: f64;
     let blocksize: usize;
     let samples: Vec<i32>;
+    let mut radius = radius;
     let image = if opt.image.is_empty() {
         None
     } else {
@@ -219,6 +225,7 @@ fn multi_frame(radius: f64, opt: Opt) {
         let block: Vec<i32>;
         let t = i as f64 / duration as f64 * opt.t;
         let filename = format!("{}{}", basename, format!("{:01$}", i, 6));
+        radius = radius * opt.expansion;
 
         block = block_iterator
             .next()
