@@ -360,6 +360,18 @@ fn equation_015(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     }
 }
 
+// something from a silly meme
+fn equation_016(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let x = (p1.x * s.c).powf(p1.y * (PI - p1.z));
+    let y = E.powf(2. * PI / (p2.x + p2.y + p2.z))*(s.n * s.c - p2.y * p.t);
+    let z = E.powf(1. - (PHI / (x + y + p2.z)));
+    Point {
+        x: if x.abs() <= 1.0 { x } else { p1.x + s.c2.cos() + p.t.sin() },
+        y: if y.abs() <= 1.0 { y } else { p1.y + s.c2.sin() + p.t.cos() },
+        z: if z.abs() <= 1.0 { z } else { s.sample * p.t }
+    }
+}
+
 fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Point) -> Point {
     match index {
         1 => equation_001,
@@ -377,6 +389,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         13 => equation_013,
         14 => equation_014,
         15 => equation_015,
+        16 => equation_016,
         _ => equation_000,
     }
 }
