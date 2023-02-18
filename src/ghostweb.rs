@@ -363,12 +363,23 @@ fn equation_015(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
 // something from a silly meme
 fn equation_016(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let x = (p1.x * s.c).powf(p1.y * (PI - p1.z));
-    let y = E.powf(2. * PI / (p2.x + p2.y + p2.z))*(s.n * s.c - p2.y * p.t);
+    let y = E.powf(2. * PI / (p2.x + p2.y + p2.z)) * (s.n * s.c - p2.y * p.t);
     let z = E.powf(1. - (PHI / (x + y + p2.z)));
     Point {
         x: if x.abs() <= 1.0 { x } else { p1.x + s.c2.cos() + p.t.sin() },
         y: if y.abs() <= 1.0 { y } else { p1.y + s.c2.sin() + p.t.cos() },
         z: if z.abs() <= 1.0 { z } else { s.sample * p.t }
+    }
+}
+
+fn equation_017(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
+    let x = s.c.sin() * (s.sample + (if s.sample > 0. { s.sample } else {p1.z - p2.x}));
+    let y = (x.powf(3.) + s.c * x + p.t).sqrt();
+    let z = p.t * s.sample * s.c2.cos() * (x.cos() + y.sin());
+    Point {
+        x: if x.abs() <= 1.0 { x } else { p1.x + s.sample.sin() * p.t.cos() },
+        y: if y.abs() <= 1.0 { y } else { p1.y * s.c2.sin() * p.t.cos() },
+        z: if z.abs() <= 1.0 { z } else { if x.abs() <= 1.0 { x } else { s.n }}
     }
 }
 
@@ -390,6 +401,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         14 => equation_014,
         15 => equation_015,
         16 => equation_016,
+        17 => equation_017,
         _ => equation_000,
     }
 }
