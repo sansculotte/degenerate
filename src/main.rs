@@ -53,7 +53,6 @@ struct RenderConfig {
     method: Method,
     size: f64,
     combine_dots: bool,
-    expansion: f64,
 }
 
 impl RenderConfig {
@@ -71,7 +70,6 @@ impl RenderConfig {
             method,
             size: opt.size,
             combine_dots: opt.combine_dots,
-            expansion: opt.expansion,
         }
     }
 }
