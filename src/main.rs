@@ -88,7 +88,7 @@ fn parse_method(method: &str) -> Result<Method, String> {
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "degenerate",
-    about = "Generative and manipulate Images with arithmetic primitives",
+    about = "Generative and manipulative Images from arithmetic primitives",
     version = VERSION
 )]
 struct Opt {
@@ -384,10 +384,11 @@ fn draw_frame(
                     context.rectangle(crx3, cry3, 0.5, 0.5);
                 }
                 else {
-                    let size_1 = if size > 0. { x.p1.z.abs() * size } else { 0.5 };
-                    let size_2 = if size > 0. { x.p2.z.abs() * size } else { 0.5 };
+                    let size_1 = if size > 0. { x.p1.z.abs() * size } else { 1.0 };
+                    let size_2 = if size > 0. { x.p2.z.abs() * size } else { 1.0 };
                     context.rectangle(crx1, cry1, size_1, size_1);
                     context.stroke().unwrap();
+                    context.fill().unwrap();
                     context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
                     context.rectangle(crx2, cry2, size_2, size_2);
                 }
