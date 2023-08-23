@@ -8,6 +8,9 @@ use std::path::Path;
 
 const PHI: f64 = 1.618033988749;
 
+/*
+ * State passed between iterations
+ */
 #[derive(Debug, Clone)]
 struct State {
     // current iteration
@@ -38,6 +41,9 @@ struct State {
     pub billow: Billow,
 }
 
+/*
+ * Initialization State
+ */
 struct Parameter {
     iterations: u32,
     samples: Vec<f64>,
@@ -103,12 +109,12 @@ pub fn ghostweb(
         let equation_1 = select_equation(if f1 > 0 {
             f1
         } else {
-            (state.sample.abs() * 9.) as usize + 4
+            (state.sample.abs() * 12.) as usize + 4
         });
         let equation_2 = select_equation(if f2 > 0 {
             f2
         } else {
-            (state.fft_bin.im.abs() * 9.) as usize + 4
+            (state.fft_bin.im.abs() * 12.) as usize + 4
         });
 
         state.p1 = equation_1(&state, &params, &state.p1, &state.p2);

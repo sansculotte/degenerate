@@ -16,9 +16,6 @@ use structopt::StructOpt;
 use lib::{load_soundfile, ramp, save_frame};
 
 
-const VERSION: &str = "0.1.0";
-
-
 macro_rules! validate {
     ($e:expr, $msg:expr) => {
         if !$e {
@@ -37,7 +34,7 @@ enum Method {
 
 #[derive(Debug)]
 struct RenderConfig {
-    // iterations (point pairs)  per frame
+        // iterations (point pairs) per frame
     iterations: u32,
     // expansion radius
     radius: f64,
@@ -89,7 +86,7 @@ fn parse_method(method: &str) -> Result<Method, String> {
 #[structopt(
     name = "degenerate",
     about = "Generative and manipulative Images from arithmetic primitives",
-    version = VERSION
+    version = env!("CARGO_PKG_VERSION")
 )]
 struct Opt {
     #[structopt(short, long)]
