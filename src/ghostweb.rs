@@ -74,7 +74,7 @@ pub fn ghostweb(
         radius,
         m,
         t,
-        rms: rms(block),
+        rms: rms<i16>(block),
     };
     let mut state = State {
         i: 0,

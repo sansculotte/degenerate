@@ -1,4 +1,4 @@
-use cairo::{ImageSurface};
+use cairo::ImageSurface;
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::cmp;
 use std::fs::File;
@@ -65,7 +65,7 @@ pub fn load_soundfile(
     filename: String,
     fps: usize,
     frames: usize,
-    debug: bool
+    debug: bool,
 ) -> (usize, usize, f64, Vec<i32>) {
     let mut reader = hound::WavReader::open(filename).unwrap();
     let spec: hound::WavSpec = reader.spec();

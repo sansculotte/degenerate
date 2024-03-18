@@ -1,5 +1,5 @@
 [package]
-name = "generate"
+name = "degenerate"
 version = "0.3.0"
 authors = ["Ulrich Berthold <u@sansculotte.net>"]
 edition = "2018"

@@ -1,20 +1,17 @@
 extern crate cairo;
 extern crate hound;
-extern crate structopt;
 extern crate image;
+extern crate structopt;
 
 mod feed;
 mod ghostweb;
-mod lib;
 
 use cairo::{Context, Format, ImageSurface};
-use ghostweb::ghostweb;
-use ghostweb::load_image;
+use denenerate::{load_soundfile, ramp, save_frame};
+use ghostweb::{ghostweb, load_image};
 use pbr::ProgressBar;
 use std::convert::TryInto;
 use structopt::StructOpt;
-use lib::{load_soundfile, ramp, save_frame};
-
 
 macro_rules! validate {
     ($e:expr, $msg:expr) => {
@@ -34,7 +31,7 @@ enum Method {
 
 #[derive(Debug)]
 struct RenderConfig {
-        // iterations (point pairs) per frame
+    // iterations (point pairs) per frame
     iterations: u32,
     // expansion radius
     radius: f64,
@@ -53,7 +50,14 @@ struct RenderConfig {
 }
 
 impl RenderConfig {
-    pub fn new(iterations: u32, method: Method, radius: f64, block: Vec<i32>, t: f64, opt: &Opt) -> Self {
+    pub fn new(
+        iterations: u32,
+        method: Method,
+        radius: f64,
+        block: Vec<i32>,
+        t: f64,
+        opt: &Opt,
+    ) -> Self {
         Self {
             iterations,
             radius,
@@ -177,8 +181,8 @@ fn multi_frame(radius: f64, opt: Opt) {
         load_image(&opt.image, opt.scale_image)
     };
     let (is, xs): (u32, Vec<ghostweb::Feed>) = match image {
-        None => (0, vec!()),
-        Some((is, xs)) => (is, xs)
+        None => (0, vec![]),
+        Some((is, xs)) => (is, xs),
     };
 
     let iterations = if opt.iterations > 0 {
@@ -186,7 +190,7 @@ fn multi_frame(radius: f64, opt: Opt) {
     } else {
         match is {
             0 => opt.width * opt.height,
-            _ => is
+            _ => is,
         }
     };
 
@@ -197,13 +201,8 @@ fn multi_frame(radius: f64, opt: Opt) {
         samples = ramp(blocksize * frames);
     } else {
         // the compiler doesn't like destructuring assignment
-        let result = load_soundfile(
-            opt.soundfile.clone(),
-            opt.fps,
-            opt.frames,
-            opt.debug
-        );
-        blocksize = result.0; 
+        let result = load_soundfile(opt.soundfile.clone(), opt.fps, opt.frames, opt.debug);
+        blocksize = result.0;
         frames = result.1;
         duration = result.2;
         samples = result.3;
@@ -216,7 +215,6 @@ fn multi_frame(radius: f64, opt: Opt) {
     let end = opt.start + frames;
 
     for i in opt.start..end {
-
         let block: Vec<i32>;
         let t = i as f64 / duration as f64 * opt.t;
         let filename = format!("{}{}", basename, format!("{:01$}", i, 6));
@@ -230,29 +228,18 @@ fn multi_frame(radius: f64, opt: Opt) {
 
         let config = RenderConfig::new(iterations, opt.method.clone(), radius, block, t, &opt);
         let frame = match xs[..] {
-            [] => {
-                render_frame(config, opt.debug)
-            },
-            _ => {
-                render_displacement_frame(config, &xs, i as f64 / frames as f64, opt.debug)
-            }
+            [] => render_frame(config, opt.debug),
+            _ => render_displacement_frame(config, &xs, i as f64 / frames as f64, opt.debug),
         };
-        save_frame(
-            frame,
-            &outdir,
-            &filename
-        );
+        save_frame(frame, &outdir, &filename);
         pb.inc();
     }
     pb.finish_print("done!");
 }
 
 fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
-    let surface = ImageSurface::create(
-        Format::ARgb32,
-        conf.width as i32,
-        conf.height as i32
-    ).unwrap();
+    let surface =
+        ImageSurface::create(Format::ARgb32, conf.width as i32, conf.height as i32).unwrap();
     let context = Context::new(&surface).unwrap();
     let xs = ghostweb(
         conf.iterations,
@@ -261,7 +248,7 @@ fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
         conf.f1,
         conf.f2,
         conf.m,
-        conf.t
+        conf.t,
     );
     draw_frame(
         &context,
@@ -279,36 +266,35 @@ fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
 fn displace(
     pixels: &Vec<ghostweb::Feed>,
     dx: &Vec<ghostweb::Feed>,
-    strength: f64
+    strength: f64,
 ) -> Vec<ghostweb::Feed> {
-    pixels.into_iter().zip(dx).map(|(p, x)| {
-        ghostweb::Feed {
+    pixels
+        .into_iter()
+        .zip(dx)
+        .map(|(p, x)| ghostweb::Feed {
             p1: ghostweb::Point {
-                x: p.p1.x * (1.-strength) + x.p1.x * strength,
-                y: p.p1.y * (1.-strength) + x.p1.y * strength,
-                z: p.p1.z * (1.-strength) + x.p1.z * strength,
+                x: p.p1.x * (1. - strength) + x.p1.x * strength,
+                y: p.p1.y * (1. - strength) + x.p1.y * strength,
+                z: p.p1.z * (1. - strength) + x.p1.z * strength,
             },
             p2: ghostweb::Point {
-                x: p.p1.x * (1.-strength) + x.p2.x * strength,
-                y: p.p1.y * (1.-strength) + x.p2.y * strength,
-                z: p.p1.z * (1.-strength) + x.p2.z * strength,
+                x: p.p1.x * (1. - strength) + x.p2.x * strength,
+                y: p.p1.y * (1. - strength) + x.p2.y * strength,
+                z: p.p1.z * (1. - strength) + x.p2.z * strength,
             },
-            radius: p.radius * (1.-strength) + x.radius * strength
-        }
-    }).collect()
+            radius: p.radius * (1. - strength) + x.radius * strength,
+        })
+        .collect()
 }
 
 fn render_displacement_frame(
     conf: RenderConfig,
     pixels: &Vec<ghostweb::Feed>,
     strength: f64,
-    debug: bool
+    debug: bool,
 ) -> ImageSurface {
-    let surface = ImageSurface::create(
-        Format::ARgb32,
-        conf.width as i32,
-        conf.height as i32
-    ).unwrap();
+    let surface =
+        ImageSurface::create(Format::ARgb32, conf.width as i32, conf.height as i32).unwrap();
     let context = Context::new(&surface).unwrap();
     let xs = ghostweb(
         conf.iterations,
@@ -317,7 +303,7 @@ fn render_displacement_frame(
         conf.f1,
         conf.f2,
         conf.m,
-        conf.t
+        conf.t,
     );
     draw_frame(
         &context,
@@ -379,8 +365,7 @@ fn draw_frame(
                 context.set_source_rgba(1.0, 1.0, 1.0, 1.0);
                 if combine_dots {
                     context.rectangle(crx3, cry3, 0.5, 0.5);
-                }
-                else {
+                } else {
                     let size_1 = if size > 0. { x.p1.z.abs() * size } else { 1.0 };
                     let size_2 = if size > 0. { x.p2.z.abs() * size } else { 1.0 };
                     context.rectangle(crx1, cry1, size_1, size_1);
