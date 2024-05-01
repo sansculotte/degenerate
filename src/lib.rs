@@ -47,11 +47,20 @@ pub fn fft(samples: Vec<f64>) -> Vec<Complex<f32>> {
         .collect::<Vec<Complex<f32>>>()
 }
 
-pub fn rms(samples: &[i32]) -> f64 {
+pub fn rms_16(samples: &[i16]) -> f64 {
     let squared = samples
         .iter()
-        // i16 beccause the soundfile is i16. needs to be passed from soundfile info!
+        // i16 because the soundfile is i16. needs to be passed from soundfile info!
         .map(|s| *s as f64 / i16::MAX as f64)
+        .fold(0.0, |a, s| a + s * s);
+    let mean = squared / samples.len() as f64;
+    mean.sqrt()
+}
+
+pub fn rms_32(samples: &[i32]) -> f64 {
+    let squared = samples
+        .iter()
+        .map(|s| *s as f64 / i32::MAX as f64)
         .fold(0.0, |a, s| a + s * s);
     let mean = squared / samples.len() as f64;
     mean.sqrt()

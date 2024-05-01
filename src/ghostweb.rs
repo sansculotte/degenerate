@@ -1,9 +1,9 @@
-use crate::lib::{fft, normalize, rms};
+pub use crate::feed::{Feed, Point};
+use degenerate::{fft, normalize, rms_32 as rms};
 use noise::{Billow, HybridMulti, NoiseFn, OpenSimplex};
 use rustfft::num_complex::Complex;
-use std::f64::consts::{E, PI, SQRT_2};
-pub use crate::feed::{Feed, Point};
 use std::cmp;
+use std::f64::consts::{E, PI, SQRT_2};
 use std::path::Path;
 
 const PHI: f64 = 1.618033988749;
@@ -74,7 +74,7 @@ pub fn ghostweb(
         radius,
         m,
         t,
-        rms: rms<i16>(block),
+        rms: rms(block),
     };
     let mut state = State {
         i: 0,
@@ -360,9 +360,17 @@ fn equation_015(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let y = p1.y - p2.y + s.n * (3. as f64 * p1.y).tan().sin();
     let z = (p2.z - p1.z) + s.c3 * p.t * (x + y).cos();
     Point {
-        x: if x.abs() <= 1.0 { x } else { s.hbm.get([xd, yd, p1.z]) },
-        y: if y.abs() <= 1.0 { y } else { s.billow.get([p2.x, p2.y, p2.z]) },
-        z: if z.abs() <= 1.0 { z } else { s.sample }
+        x: if x.abs() <= 1.0 {
+            x
+        } else {
+            s.hbm.get([xd, yd, p1.z])
+        },
+        y: if y.abs() <= 1.0 {
+            y
+        } else {
+            s.billow.get([p2.x, p2.y, p2.z])
+        },
+        z: if z.abs() <= 1.0 { z } else { s.sample },
     }
 }
 
@@ -372,20 +380,44 @@ fn equation_016(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     let y = E.powf(2. * PI / (p2.x + p2.y + p2.z)) * (s.n * s.c - p2.y * p.t);
     let z = E.powf(1. - (PHI / (x + y + p2.z)));
     Point {
-        x: if x.abs() <= 1.0 { x } else { p1.x + s.c2.cos() + p.t.sin() },
-        y: if y.abs() <= 1.0 { y } else { p1.y + s.c2.sin() + p.t.cos() },
-        z: if z.abs() <= 1.0 { z } else { s.sample * p.t }
+        x: if x.abs() <= 1.0 {
+            x
+        } else {
+            p1.x + s.c2.cos() + p.t.sin()
+        },
+        y: if y.abs() <= 1.0 {
+            y
+        } else {
+            p1.y + s.c2.sin() + p.t.cos()
+        },
+        z: if z.abs() <= 1.0 { z } else { s.sample * p.t },
     }
 }
 
 fn equation_017(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
-    let x = s.c.sin() * (s.sample + (if s.sample > 0. { s.sample } else {p1.z - p2.x}));
+    let x = s.c.sin() * (s.sample + (if s.sample > 0. { s.sample } else { p1.z - p2.x }));
     let y = (x.powf(3.) + s.c * x + p.t).sqrt();
     let z = p.t * s.sample * s.c2.cos() * (x.cos() + y.sin());
     Point {
-        x: if x.abs() <= 1.0 { x } else { p1.x + s.sample.sin() * p.t.cos() },
-        y: if y.abs() <= 1.0 { y } else { p1.y * s.c2.sin() * p.t.cos() },
-        z: if z.abs() <= 1.0 { z } else { if x.abs() <= 1.0 { x } else { s.n }}
+        x: if x.abs() <= 1.0 {
+            x
+        } else {
+            p1.x + s.sample.sin() * p.t.cos()
+        },
+        y: if y.abs() <= 1.0 {
+            y
+        } else {
+            p1.y * s.c2.sin() * p.t.cos()
+        },
+        z: if z.abs() <= 1.0 {
+            z
+        } else {
+            if x.abs() <= 1.0 {
+                x
+            } else {
+                s.n
+            }
+        },
     }
 }
 
@@ -413,7 +445,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
 }
 
 pub fn image_to_points(image: image::GrayImage, scale: f64) -> Vec<Feed> {
-    let ( width, height ) = image.dimensions();
+    let (width, height) = image.dimensions();
     let half_image_width = width / 2;
     let half_image_height = height / 2;
     let rel = width as f64 / height as f64;
@@ -424,13 +456,15 @@ pub fn image_to_points(image: image::GrayImage, scale: f64) -> Vec<Feed> {
         let x: f64 = (xi as f64 / width as f64) * 2. - 1.;
         let y: f64 = ((yi as f64 / height as f64) * 2. - 1.) / rel;
         if px[0] > 128 {
-            xs.push(
-                Feed {
-                    p1: Point { x, y, z: 1. },
-                    p2: Point { x: 0., y: 0., z: 1. },
-                    radius: cmp::max(half_image_width, half_image_height) as f64 * scale
-                }
-            );
+            xs.push(Feed {
+                p1: Point { x, y, z: 1. },
+                p2: Point {
+                    x: 0.,
+                    y: 0.,
+                    z: 1.,
+                },
+                radius: cmp::max(half_image_width, half_image_height) as f64 * scale,
+            });
         }
     }
     xs
@@ -440,11 +474,13 @@ pub fn load_image(image_file_path: &String, scale: f64) -> Option<(u32, Vec<Feed
     let path = Path::new(image_file_path);
     if !path.exists() {
         println!("image file not found");
-        return None
+        return None;
     }
 
-    let image = image::open(path).expect("Could not open image file").into_luma8();
-    let ( width, height ) = image.dimensions();
+    let image = image::open(path)
+        .expect("Could not open image file")
+        .into_luma8();
+    let (width, height) = image.dimensions();
     let xs = image_to_points(image, scale);
     let iterations = width * height;
     Some((iterations, xs))

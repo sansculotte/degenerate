@@ -1,17 +1,21 @@
 extern crate cairo;
+extern crate clap;
 extern crate hound;
 extern crate image;
-extern crate structopt;
 
+mod args;
 mod feed;
 mod ghostweb;
+mod render;
 
+use args::Args;
+use args::Method;
 use cairo::{Context, Format, ImageSurface};
-use denenerate::{load_soundfile, ramp, save_frame};
+use clap::Parser;
+use degenerate::{load_soundfile, ramp, save_frame};
 use ghostweb::{ghostweb, load_image};
 use pbr::ProgressBar;
 use std::convert::TryInto;
-use structopt::StructOpt;
 
 macro_rules! validate {
     ($e:expr, $msg:expr) => {
@@ -21,204 +25,66 @@ macro_rules! validate {
     };
 }
 
-#[derive(Debug, Clone)]
-enum Method {
-    Arc,
-    Curve,
-    Dot,
-    Line,
-}
-
-#[derive(Debug)]
-struct RenderConfig {
-    // iterations (point pairs) per frame
-    iterations: u32,
-    // expansion radius
-    radius: f64,
-    // time
-    t: f64,
-    // m parameter for exponential transfer function
-    m: f64,
-    f1: usize,
-    f2: usize,
-    block: Vec<i32>,
-    width: u32,
-    height: u32,
-    method: Method,
-    size: f64,
-    combine_dots: bool,
-}
-
-impl RenderConfig {
-    pub fn new(
-        iterations: u32,
-        method: Method,
-        radius: f64,
-        block: Vec<i32>,
-        t: f64,
-        opt: &Opt,
-    ) -> Self {
-        Self {
-            iterations,
-            radius,
-            t,
-            m: opt.m,
-            f1: opt.f1,
-            f2: opt.f2,
-            block,
-            width: opt.width,
-            height: opt.height,
-            method,
-            size: opt.size,
-            combine_dots: opt.combine_dots,
-        }
-    }
-}
-
-// to select a method by string for structopt
-fn parse_method(method: &str) -> Result<Method, String> {
-    match method {
-        "arc" => Ok(Method::Arc),
-        "curve" => Ok(Method::Curve),
-        "dot" => Ok(Method::Dot),
-        "line" => Ok(Method::Line),
-        _ => Err(format!("Could not parse method {}", method)),
-    }
-}
-
-#[derive(Debug, StructOpt)]
-#[structopt(
-    name = "degenerate",
-    about = "Generative and manipulative Images from arithmetic primitives",
-    version = env!("CARGO_PKG_VERSION")
-)]
-struct Opt {
-    #[structopt(short, long)]
-    debug: bool,
-
-    #[structopt(short, long, default_value = "4000")]
-    width: u32,
-
-    #[structopt(short, long, default_value = "4000")]
-    height: u32,
-
-    #[structopt(short, long, default_value = "0")]
-    iterations: u32,
-
-    #[structopt(long, default_value = "25")]
-    fps: usize,
-
-    #[structopt(long, default_value = "0")]
-    f1: usize,
-
-    #[structopt(long, default_value = "0")]
-    f2: usize,
-
-    #[structopt(short = "t", default_value = "1.0")]
-    t: f64,
-
-    #[structopt(short, long, default_value = "0")]
-    radius: f64,
-
-    #[structopt(short, long, default_value = "1.0")]
-    expansion: f64,
-
-    #[structopt(long)]
-    combine_dots: bool,
-
-    #[structopt(short = "M", long, parse(try_from_str = parse_method), default_value = "dot")]
-    method: Method,
-
-    #[structopt(long, default_value = "1")]
-    scale_image: f64,
-
-    #[structopt(short, long, default_value = "0")]
-    size: f64,
-
-    #[structopt(short, default_value = "0.2")]
-    m: f64,
-
-    #[structopt(short, long, default_value = "/tmp")]
-    outdir: String,
-
-    #[structopt(short = "n", long, default_value = "frame_")]
-    filename: String,
-
-    #[structopt(long, default_value = "0")]
-    start: usize,
-
-    #[structopt(short, long, default_value = "0")]
-    frames: usize,
-
-    #[structopt(long, default_value = "")]
-    image: String,
-
-    #[structopt(default_value = "")]
-    soundfile: String,
-}
-
 fn main() {
-    let opt = Opt::from_args();
-
-    let radius = if opt.radius > 0. {
-        opt.radius
+    let args = Args::parse();
+    let radius = if args.radius > 0. {
+        args.radius
     } else {
-        (opt.width / 2) as f64
+        (args.width / 2) as f64
     };
-
-    multi_frame(radius, opt)
+    multi_frame(radius, args)
 }
 
-fn multi_frame(radius: f64, opt: Opt) {
+fn multi_frame(radius: f64, args: Args) {
     let frames: usize;
     let duration: f64;
     let blocksize: usize;
     let samples: Vec<i32>;
     let mut radius = radius;
-    let image = if opt.image.is_empty() {
+    let image = if args.image.is_empty() {
         None
     } else {
-        load_image(&opt.image, opt.scale_image)
+        load_image(&args.image, args.scale_image)
     };
     let (is, xs): (u32, Vec<ghostweb::Feed>) = match image {
         None => (0, vec![]),
         Some((is, xs)) => (is, xs),
     };
 
-    let iterations = if opt.iterations > 0 {
-        opt.iterations
+    let iterations = if args.iterations > 0 {
+        args.iterations
     } else {
         match is {
-            0 => opt.width * opt.height,
+            0 => args.width * args.height,
             _ => is,
         }
     };
 
-    if opt.soundfile.is_empty() {
+    if args.soundfile.is_empty() {
         blocksize = 255;
-        frames = if opt.frames > 0 { opt.frames } else { 1 };
-        duration = frames as f64 / opt.fps as f64;
+        frames = if args.frames > 0 { args.frames } else { 1 };
+        duration = frames as f64 / args.fps as f64;
         samples = ramp(blocksize * frames);
     } else {
         // the compiler doesn't like destructuring assignment
-        let result = load_soundfile(opt.soundfile.clone(), opt.fps, opt.frames, opt.debug);
+        let result = load_soundfile(args.soundfile.clone(), args.fps, args.frames, args.debug);
         blocksize = result.0;
         frames = result.1;
         duration = result.2;
         samples = result.3;
     }
-    let mut block_iterator = samples.chunks(blocksize).skip(opt.start);
+    let mut block_iterator = samples.chunks(blocksize).skip(args.start);
 
-    let basename = opt.filename.clone();
-    let outdir = opt.outdir.clone();
+    let basename = args.filename.clone();
+    let outdir = args.outdir.clone();
     let mut pb = ProgressBar::new(frames as u64);
-    let end = opt.start + frames;
+    let end = args.start + frames;
 
-    for i in opt.start..end {
+    for i in args.start..end {
         let block: Vec<i32>;
-        let t = i as f64 / duration as f64 * opt.t;
+        let t = i as f64 / duration as f64 * args.t;
         let filename = format!("{}{}", basename, format!("{:01$}", i, 6));
-        radius = radius * opt.expansion;
+        radius = radius * args.expansion;
 
         block = block_iterator
             .next()
@@ -226,10 +92,11 @@ fn multi_frame(radius: f64, opt: Opt) {
             .try_into()
             .expect("could not unwrap soundfile sample block");
 
-        let config = RenderConfig::new(iterations, opt.method.clone(), radius, block, t, &opt);
+        let config =
+            render::RenderConfig::new(iterations, args.method.clone(), radius, block, t, &args);
         let frame = match xs[..] {
-            [] => render_frame(config, opt.debug),
-            _ => render_displacement_frame(config, &xs, i as f64 / frames as f64, opt.debug),
+            [] => render_frame(config, args.debug),
+            _ => render_displacement_frame(config, &xs, i as f64 / frames as f64, args.debug),
         };
         save_frame(frame, &outdir, &filename);
         pb.inc();
@@ -237,7 +104,7 @@ fn multi_frame(radius: f64, opt: Opt) {
     pb.finish_print("done!");
 }
 
-fn render_frame(conf: RenderConfig, debug: bool) -> ImageSurface {
+fn render_frame(conf: render::RenderConfig, debug: bool) -> ImageSurface {
     let surface =
         ImageSurface::create(Format::ARgb32, conf.width as i32, conf.height as i32).unwrap();
     let context = Context::new(&surface).unwrap();
@@ -288,7 +155,7 @@ fn displace(
 }
 
 fn render_displacement_frame(
-    conf: RenderConfig,
+    conf: render::RenderConfig,
     pixels: &Vec<ghostweb::Feed>,
     strength: f64,
     debug: bool,
