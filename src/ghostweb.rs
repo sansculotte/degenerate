@@ -109,12 +109,12 @@ pub fn ghostweb(
         let equation_1 = select_equation(if f1 > 0 {
             f1
         } else {
-            (state.sample.abs() * 12.) as usize + 4
+            (state.sample.abs() * 14.) as usize + 4
         });
         let equation_2 = select_equation(if f2 > 0 {
             f2
         } else {
-            (state.fft_bin.im.abs() * 12.) as usize + 4
+            (state.fft_bin.im.abs() * 14.) as usize + 4
         });
 
         state.p1 = equation_1(&state, &params, &state.p1, &state.p2);
@@ -154,8 +154,8 @@ fn advance(i: u32, mut state: State, p: &Parameter) -> State {
 }
 
 fn equation_000(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
-    let x: f64 = p.t + s.c.sin();
-    let y: f64 = p.t + s.c.cos();
+    let x: f64 = p.t * s.c.sin();
+    let y: f64 = p.t * s.c.cos();
     let z: f64 = s.sample;
     Point { x, y, z }
 }
@@ -421,6 +421,13 @@ fn equation_017(s: &State, p: &Parameter, p1: &Point, p2: &Point) -> Point {
     }
 }
 
+fn equation_018(s: &State, p: &Parameter, _p1: &Point, _p2: &Point) -> Point {
+    let x = s.c.sin() * s.sample;
+    let y = s.c.cos() * s.sample;
+    let z = s.rf * p.rms * s.hbm.get([s.c, s.sample]);
+    Point { x, y, z }
+}
+
 fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Point) -> Point {
     match index {
         1 => equation_001,
@@ -440,6 +447,7 @@ fn select_equation(index: usize) -> fn(&State, &Parameter, p1: &Point, p2: &Poin
         15 => equation_015,
         16 => equation_016,
         17 => equation_017,
+        18 => equation_018,
         _ => equation_000,
     }
 }
