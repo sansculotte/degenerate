@@ -53,6 +53,9 @@ pub struct Args {
     #[arg(short, long, default_value = "0")]
     pub radius: f64,
 
+    #[arg(short, long, default_value = "0")]
+    pub grow: f64,
+
     #[arg(short, long, default_value = "1.0")]
     pub expansion: f64,
 
